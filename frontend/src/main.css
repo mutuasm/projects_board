@@ -1,0 +1,50 @@
+@import 'frappe-ui/style.css';
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+/* Board columns scroll horizontally; hide the chrome so it reads like Jira. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.thin-scrollbar {
+  scrollbar-width: thin;
+}
+.thin-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-surface-gray-3;
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* vuedraggable feedback */
+.task-ghost {
+  @apply opacity-40;
+}
+.task-ghost > * {
+  @apply border-dashed border-outline-gray-3;
+}
+.task-drag {
+  @apply rotate-1 shadow-lg;
+}
+
+@layer components {
+  .prose-f {
+    @apply prose prose-sm max-w-none
+      prose-img:rounded-lg prose-img:border
+      prose-td:border prose-td:border-outline-gray-2 prose-td:p-2
+      prose-th:border prose-th:border-outline-gray-2 prose-th:bg-surface-gray-2 prose-th:p-2;
+  }
+}
