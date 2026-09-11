@@ -10,7 +10,28 @@
           @keydown.enter="submit"
         />
 
-        <div class="grid grid-cols-2 gap-3">
+        <!-- native Project Template: ERPNext copies the template's tasks in -->
+        <section v-if="templates.length">
+          <label class="mb-1.5 block text-xs text-ink-gray-5">Start from a template</label>
+          <div class="grid gap-2 sm:grid-cols-2">
+            <button
+              v-for="template in templateChoices"
+              :key="template.value"
+              class="rounded-lg border p-2.5 text-left transition-colors"
+              :class="
+                form.project_template === template.value
+                  ? 'border-outline-gray-4 bg-surface-gray-2'
+                  : 'border-outline-gray-2 hover:border-outline-gray-3'
+              "
+              @click="form.project_template = template.value"
+            >
+              <p class="text-sm font-medium text-ink-gray-8">{{ template.label }}</p>
+              <p class="mt-0.5 text-xs text-ink-gray-5">{{ template.hint }}</p>
+            </button>
+          </div>
+        </section>
+
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <FormControl
             v-model="form.status"
             type="select"
@@ -23,9 +44,8 @@
             label="Priority"
             :options="priorityOptions"
           />
-          <FormControl
+          <NullableSelect
             v-model="form.project_type"
-            type="select"
             label="Type"
             :options="typeOptions"
           />
@@ -57,7 +77,7 @@
     </template>
 
     <template #actions>
-      <div class="flex justify-end gap-2">
+      <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button @click="show = false">Cancel</Button>
         <Button variant="solid" :loading="saving" @click="submit">
           Create project
@@ -71,6 +91,7 @@
 import { computed, ref, watch } from 'vue'
 import { Button, Dialog, ErrorMessage, FormControl } from 'frappe-ui'
 import AssigneeSelect from './AssigneeSelect.vue'
+import NullableSelect from './NullableSelect.vue'
 import api from '@/data/api'
 import { options, projectStatuses, projectTypes, user } from '@/data/session'
 
@@ -92,6 +113,7 @@ function blankForm() {
     priority: 'Medium',
     project_type: '',
     percent_complete_method: 'Task Completion',
+    project_template: '',
     expected_start_date: '',
     expected_end_date: '',
     members: user.value?.name ? [user.value.name] : [],
@@ -99,6 +121,18 @@ function blankForm() {
 }
 
 const form = ref(blankForm())
+const templates = ref([])
+
+const templateChoices = computed(() => [
+  { value: '', label: 'Blank project', hint: 'Start with no tasks' },
+  ...templates.value.map((t) => ({
+    value: t.name,
+    label: t.name,
+    hint: t.task_count
+      ? `${t.task_count} tasks · ${t.sample_tasks.slice(0, 2).join(', ')}…`
+      : 'No tasks defined',
+  })),
+])
 
 const priorityOptions = computed(() => options.value.project_priorities || [])
 const typeOptions = computed(() => [
@@ -107,10 +141,13 @@ const typeOptions = computed(() => [
 ])
 const methodOptions = computed(() => options.value.percent_complete_methods || [])
 
-watch(show, (open) => {
+watch(show, async (open) => {
   if (!open) return
   errorMessage.value = ''
   form.value = blankForm()
+  if (!templates.value.length) {
+    templates.value = (await api.getProjectTemplates()) || []
+  }
 })
 
 async function submit() {

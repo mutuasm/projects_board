@@ -6,6 +6,18 @@ body,
   height: 100%;
 }
 
+/* Paint the ground explicitly so the dark theme has no white gaps behind the
+   app shell (html/body are otherwise transparent). */
+body {
+  @apply bg-surface-white text-ink-gray-8;
+}
+
+/* Stop pull-to-refresh and rubber-banding fighting the board's own scrolling. */
+html,
+body {
+  overscroll-behavior: none;
+}
+
 /* Board columns scroll horizontally; hide the chrome so it reads like Jira. */
 .no-scrollbar {
   scrollbar-width: none;
@@ -29,6 +41,191 @@ body,
   background: transparent;
 }
 
+/*
+ * iOS Safari zooms the whole page when a focused field is under 16px, and
+ * frappe-ui's `text-base` is 14px. Bump form controls on small screens only --
+ * the desktop type scale is untouched.
+ */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea,
+  .ProseMirror {
+    font-size: 16px !important;
+  }
+}
+
+/* No grey flash on tap, and no 300ms click delay. */
+@media (pointer: coarse) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button,
+  a,
+  [role='button'] {
+    touch-action: manipulation;
+  }
+}
+
+/* Keep a scrolled pane from rubber-banding the whole page behind it. */
+.thin-scrollbar,
+.no-scrollbar {
+  overscroll-behavior: contain;
+}
+
+
+/*
+ * Stacking scale.
+ *
+ * Overlays are portalled to <body>, and most of them land there with
+ * `z-index: auto` -- frappe-ui's Dialog sets none, and reka-ui writes
+ * `z-index: auto` inline on its popper wrapper. A positioned element with a
+ * positive z-index paints above every z-auto sibling regardless of DOM order,
+ * so the slide-over panel (z-50) and the mobile drawer (z-50) would cover any
+ * dialog, dropdown or select opened from inside them.
+ *
+ *   60  portalled overlays: dialogs, dropdowns, selects, popovers
+ *   50  slide-over panel, mobile drawer
+ *   40  their scrims
+ *   30  floating bars (bulk actions, running timer)
+ *
+ * Toasts set their own maximum and stay above all of it.
+ * `!important` is required to beat reka-ui's inline z-index.
+ */
+.dialog-overlay,
+[data-reka-popper-content-wrapper],
+[data-radix-popper-content-wrapper] {
+  z-index: 60 !important;
+}
+
+
+/*
+ * Range input with a thin track but a full-height hit area.
+ *
+ * A bare `h-1` range is only 4px of pointer target -- fine to look at, almost
+ * impossible to grab, and hopeless on touch. The element keeps a comfortable
+ * height while the *track* is drawn thin, and the fill is painted from the
+ * `--pb-range-fill` custom property because WebKit has no native filled track.
+ */
+.pb-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 1.25rem;
+  background: transparent;
+  cursor: pointer;
+}
+.pb-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.pb-range:focus {
+  outline: none;
+}
+
+/* track */
+.pb-range::-webkit-slider-runnable-track {
+  height: 0.25rem;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    theme('colors.gray.700') var(--pb-range-fill, 0%),
+    theme('colors.gray.200') var(--pb-range-fill, 0%)
+  );
+}
+.pb-range::-moz-range-track {
+  height: 0.25rem;
+  border-radius: 9999px;
+  background: theme('colors.gray.200');
+}
+.pb-range::-moz-range-progress {
+  height: 0.25rem;
+  border-radius: 9999px;
+  background: theme('colors.gray.700');
+}
+
+/* thumb */
+.pb-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-top: -0.3125rem; /* centre it on the 4px track */
+  border-radius: 9999px;
+  border: 2px solid theme('colors.white');
+  background: theme('colors.gray.800');
+  transition: transform 0.1s ease;
+}
+.pb-range::-moz-range-thumb {
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 9999px;
+  border: 2px solid theme('colors.white');
+  background: theme('colors.gray.800');
+}
+.pb-range:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+.pb-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px theme('colors.gray.300');
+}
+
+/* dark theme: the same shapes against the dark surface */
+[data-theme='dark'] .pb-range::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    to right,
+    theme('colors.gray.300') var(--pb-range-fill, 0%),
+    theme('colors.gray.700') var(--pb-range-fill, 0%)
+  );
+}
+[data-theme='dark'] .pb-range::-moz-range-track {
+  background: theme('colors.gray.700');
+}
+[data-theme='dark'] .pb-range::-moz-range-progress {
+  background: theme('colors.gray.300');
+}
+[data-theme='dark'] .pb-range::-webkit-slider-thumb,
+[data-theme='dark'] .pb-range::-moz-range-thumb {
+  border-color: theme('colors.gray.900');
+  background: theme('colors.gray.200');
+}
+
+/* a finger needs more than a mouse pointer */
+@media (pointer: coarse) {
+  .pb-range {
+    height: 2.25rem;
+  }
+  .pb-range::-webkit-slider-thumb {
+    width: 1.125rem;
+    height: 1.125rem;
+    margin-top: -0.4375rem;
+  }
+  .pb-range::-moz-range-thumb {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+}
+
+/* Comfortable hit areas on touch screens without bloating the mouse layout. */
+@media (pointer: coarse) {
+  .tap-target {
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+  }
+}
+
+/* Board columns snap one-per-screen on phones. */
+.snap-columns {
+  scroll-snap-type: x mandatory;
+}
+.snap-columns > * {
+  scroll-snap-align: start;
+}
+@media (min-width: 1024px) {
+  .snap-columns {
+    scroll-snap-type: none;
+  }
+}
+
 /* vuedraggable feedback */
 .task-ghost {
   @apply opacity-40;
@@ -41,6 +238,29 @@ body,
 }
 
 @layer components {
+  /*
+   * Flat surfaces: a single hairline and a background shift on hover, no
+   * shadows. Shadow is reserved for things that genuinely float above the
+   * page (drawers, dialogs, the floating action bars).
+   */
+  .pb-card {
+    @apply rounded-md border border-outline-gray-2 bg-surface-white transition-colors;
+  }
+  .pb-card:hover {
+    @apply border-outline-gray-3;
+  }
+
+  .pb-panel {
+    @apply rounded-lg border border-outline-gray-2 bg-surface-white;
+  }
+
+  /* Quiet, borderless input that only shows structure on focus. */
+  .pb-input {
+    @apply rounded-md border border-transparent bg-surface-gray-2 text-ink-gray-8 transition-colors;
+    @apply placeholder:text-ink-gray-4 hover:bg-surface-gray-3;
+    @apply focus:border-outline-gray-3 focus:bg-surface-white focus:outline-none focus:ring-0;
+  }
+
   .prose-f {
     @apply prose prose-sm max-w-none
       prose-img:rounded-lg prose-img:border

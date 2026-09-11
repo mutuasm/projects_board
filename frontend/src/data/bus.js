@@ -20,4 +20,7 @@ export const EVENTS = {
   TASK_CREATED: 'task:created',
   TASK_DELETED: 'task:deleted',
   PROJECT_UPDATED: 'project:updated',
+  CREATE_TASK: 'ui:create-task',
+  FOCUS_SEARCH: 'ui:focus-search',
+  SHOW_SHORTCUTS: 'ui:show-shortcuts',
 }

@@ -1,5 +1,5 @@
 <template>
-  <Dropdown v-if="editable" :options="statusOptions" placement="left">
+  <Dropdown v-if="editable" :options="statusOptions" placement="bottom-start">
     <button
       class="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium text-ink-gray-7 transition-colors hover:bg-surface-gray-2"
     >

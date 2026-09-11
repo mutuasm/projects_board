@@ -17,6 +17,7 @@ export const permissions = computed(() => ({
   canCreateProject: session.boot.data?.can_create_project ?? false,
   canCreateTask: session.boot.data?.can_create_task ?? false,
   canSubmitTimesheet: session.boot.data?.can_submit_timesheet ?? false,
+  canPostUpdate: session.boot.data?.can_post_update ?? false,
   isManager: session.boot.data?.is_manager ?? false,
 }))
 
@@ -27,6 +28,7 @@ export const taskTypes = computed(() => options.value.task_types || [])
 export const projectStatuses = computed(() => options.value.project_statuses || [])
 export const projectTypes = computed(() => options.value.project_types || [])
 export const activityTypes = computed(() => options.value.activity_types || [])
+export const departments = computed(() => options.value.departments || [])
 
 export function logout() {
   window.location.href = '/api/method/logout'

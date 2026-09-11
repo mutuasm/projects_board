@@ -1,28 +1,22 @@
 <template>
   <div class="flex h-full min-h-0 flex-col">
-    <header class="shrink-0 border-b border-outline-gray-2 px-5 py-4">
-      <div class="flex flex-wrap items-center gap-3">
-        <div>
-          <h1 class="text-xl font-semibold text-ink-gray-9">Projects</h1>
-          <p class="text-sm text-ink-gray-5">
+    <header
+      class="shrink-0 border-b border-outline-gray-2 px-4 pb-3 pt-safe-top sm:px-5 sm:py-4"
+    >
+      <div class="flex items-center gap-2 pt-3 sm:pt-0">
+        <SidebarToggle />
+        <div class="min-w-0">
+          <h1 class="truncate text-lg font-semibold text-ink-gray-9 sm:text-xl">
+            Projects
+          </h1>
+          <p class="text-xs text-ink-gray-5 sm:text-sm">
             {{ filtered.length }} of {{ projects.length }} projects
           </p>
         </div>
 
-        <div class="ml-auto flex flex-wrap items-center gap-2">
-          <div class="relative">
-            <LucideSearch
-              class="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-ink-gray-4"
-            />
-            <input
-              v-model="search"
-              type="text"
-              placeholder="Search projects"
-              class="h-7 w-52 rounded border border-outline-gray-2 bg-surface-gray-2 pl-7 pr-2 text-sm text-ink-gray-8 placeholder:text-ink-gray-4 focus:border-outline-gray-4 focus:outline-none focus:ring-0"
-            />
-          </div>
-          <Select v-model="statusFilter" :options="statusOptions" size="sm" class="w-32" />
+        <div class="ml-auto flex shrink-0 items-center gap-2">
           <TabButtons
+            v-if="!isNarrow"
             v-model="layout"
             :buttons="[
               { label: 'Cards', value: 'cards' },
@@ -35,13 +29,32 @@
             @click="showNew = true"
           >
             <template #prefix><LucidePlus class="size-4" /></template>
-            New project
+            <span class="hidden sm:inline">New project</span>
           </Button>
+        </div>
+      </div>
+
+      <!-- search + status sit on their own row so neither gets squeezed -->
+      <div class="mt-3 flex items-center gap-2">
+        <div class="relative min-w-0 flex-1 sm:max-w-xs">
+          <LucideSearch
+            class="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-ink-gray-4"
+          />
+          <input
+            v-model="search"
+            type="text"
+            placeholder="Search projects"
+            class="pb-input h-9 w-full pl-7 pr-2 text-base sm:h-7 sm:text-sm"
+          />
+        </div>
+        <!-- Select hardcodes w-full on its trigger, so size it from a wrapper -->
+        <div class="w-32 shrink-0">
+          <NullableSelect v-model="statusFilter" :options="statusOptions" />
         </div>
       </div>
     </header>
 
-    <div class="thin-scrollbar min-h-0 flex-1 overflow-y-auto px-5 py-4">
+    <div class="thin-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-safe-bottom sm:px-5">
       <div v-if="loadingProjects && !projects.length" class="flex h-40 items-center justify-center">
         <LoadingIndicator class="size-5 text-ink-gray-5" />
       </div>
@@ -68,14 +81,14 @@
 
       <!-- cards -->
       <div
-        v-else-if="layout === 'cards'"
+        v-else-if="effectiveLayout === 'cards'"
         class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
       >
         <router-link
           v-for="project in filtered"
           :key="project.name"
           :to="{ name: 'Board', params: { project: project.name } }"
-          class="flex flex-col gap-3 rounded-lg border border-outline-gray-2 bg-surface-white p-4 transition-shadow hover:border-outline-gray-3 hover:shadow"
+          class="pb-card flex flex-col gap-3 p-4"
         >
           <div class="flex items-start gap-2">
             <div class="min-w-0 flex-1">
@@ -132,8 +145,11 @@
       </div>
 
       <!-- table -->
-      <div v-else class="overflow-hidden rounded-lg border border-outline-gray-2">
-        <table class="w-full text-sm">
+      <div
+        v-else
+        class="thin-scrollbar overflow-x-auto rounded-lg border border-outline-gray-2"
+      >
+        <table class="w-full min-w-[46rem] text-sm">
           <thead class="bg-surface-gray-1 text-xs uppercase tracking-wide text-ink-gray-5">
             <tr>
               <th class="px-3 py-2 text-left font-medium">Project</th>
@@ -206,11 +222,14 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Badge, Button, LoadingIndicator, Select, TabButtons } from 'frappe-ui'
+import { Badge, Button, LoadingIndicator, TabButtons } from 'frappe-ui'
+import NullableSelect from '@/components/NullableSelect.vue'
 import AvatarStack from '@/components/AvatarStack.vue'
 import CreateProjectDialog from '@/components/CreateProjectDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import SidebarToggle from '@/components/SidebarToggle.vue'
 import { loadProjects, loadingProjects, projects } from '@/data/projects'
+import { isNarrow } from '@/data/ui'
 import { permissions, projectStatuses } from '@/data/session'
 import { PROJECT_STATUS_STYLES } from '@/utils/constants'
 import { formatDate, isOverdue } from '@/utils/format'
@@ -220,6 +239,9 @@ const search = ref('')
 const statusFilter = ref('Open')
 const layout = ref(localStorage.getItem('pb:projects-layout') || 'cards')
 const showNew = ref(false)
+
+/** A six-column table is unreadable on a phone, so force cards there. */
+const effectiveLayout = computed(() => (isNarrow.value ? 'cards' : layout.value))
 
 const statusOptions = computed(() => [
   { label: 'All statuses', value: '' },

@@ -1,7 +1,26 @@
 <template>
+  <!-- scrim: only ever visible while the drawer is open on small screens -->
+  <Transition
+    enter-active-class="transition-opacity duration-150"
+    leave-active-class="transition-opacity duration-150"
+    enter-from-class="opacity-0"
+    leave-to-class="opacity-0"
+  >
+    <div
+      v-if="sidebarOpen"
+      class="fixed inset-0 z-40 bg-black/30 lg:hidden"
+      @click="closeSidebar"
+    />
+  </Transition>
+
   <aside
-    class="flex h-full shrink-0 flex-col border-r border-outline-gray-2 bg-surface-menu-bar transition-all duration-200"
-    :class="collapsed ? 'w-14' : 'w-60'"
+    class="flex h-full shrink-0 flex-col border-r border-outline-gray-2 bg-surface-menu-bar pb-safe-bottom pl-safe-left pt-safe-top transition-transform duration-200 lg:translate-x-0 lg:transition-all"
+    :class="[
+      // phone/tablet: an overlay drawer that slides in from the left
+      'fixed inset-y-0 left-0 z-50 w-72 lg:static lg:z-auto lg:shadow-none',
+      sidebarOpen ? 'translate-x-0 shadow-lg' : '-translate-x-full',
+      collapsed ? 'lg:w-14' : 'lg:w-60',
+    ]"
   >
     <!-- brand -->
     <div class="flex items-center gap-2 px-3 py-3">
@@ -10,13 +29,25 @@
       >
         <LucideKanban class="size-4" />
       </div>
-      <span v-if="!collapsed" class="truncate text-base font-semibold text-ink-gray-8">
+      <span
+        v-if="!collapsed || isMobile"
+        class="truncate text-base font-semibold text-ink-gray-8"
+      >
         Project Board
       </span>
+
+      <!-- close on mobile, collapse on desktop -->
       <button
-        class="ml-auto rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2"
+        class="tap-target ml-auto grid place-items-center rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2 lg:hidden"
+        aria-label="Close navigation"
+        @click="closeSidebar"
+      >
+        <LucideX class="size-5" />
+      </button>
+      <button
+        class="ml-auto hidden rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2 lg:block"
         :title="collapsed ? 'Expand' : 'Collapse'"
-        @click="toggle"
+        @click="toggleCollapsed"
       >
         <LucidePanelLeft class="size-4" />
       </button>
@@ -24,31 +55,23 @@
 
     <!-- primary nav -->
     <nav class="flex flex-col gap-0.5 px-2">
-      <SidebarLink
-        :to="{ name: 'MyWork' }"
-        label="My Work"
-        :collapsed="collapsed"
-      >
+      <SidebarLink :to="{ name: 'MyWork' }" label="My Work" :collapsed="iconsOnly">
         <LucideCircleUser class="size-4" />
       </SidebarLink>
-      <SidebarLink
-        :to="{ name: 'Projects' }"
-        label="Projects"
-        :collapsed="collapsed"
-      >
+      <SidebarLink :to="{ name: 'Projects' }" label="Projects" :collapsed="iconsOnly">
         <LucideLayoutGrid class="size-4" />
       </SidebarLink>
     </nav>
 
     <!-- project list -->
-    <div v-if="!collapsed" class="mt-4 flex min-h-0 flex-1 flex-col px-2">
+    <div v-if="!iconsOnly" class="mt-4 flex min-h-0 flex-1 flex-col px-2">
       <div class="flex items-center justify-between px-2 py-1">
         <span class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">
           Your projects
         </span>
         <button
           v-if="permissions.canCreateProject"
-          class="rounded p-0.5 text-ink-gray-5 hover:bg-surface-gray-2"
+          class="tap-target grid place-items-center rounded p-0.5 text-ink-gray-5 hover:bg-surface-gray-2"
           title="New project"
           @click="showNewProject = true"
         >
@@ -61,7 +84,7 @@
           v-for="project in recentProjects"
           :key="project.name"
           :to="{ name: 'Board', params: { project: project.name } }"
-          class="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-ink-gray-7 hover:bg-surface-gray-2"
+          class="flex items-center gap-2 rounded px-2 py-2 text-sm text-ink-gray-7 hover:bg-surface-gray-2 lg:py-1.5"
           active-class="bg-surface-gray-3 font-medium text-ink-gray-9"
         >
           <span
@@ -95,14 +118,11 @@
           class="flex w-full items-center gap-2 rounded px-1.5 py-1.5 hover:bg-surface-gray-2"
         >
           <Avatar :image="user.user_image" :label="user.full_name" size="sm" />
-          <span
-            v-if="!collapsed"
-            class="truncate text-sm font-medium text-ink-gray-8"
-          >
+          <span v-if="!iconsOnly" class="truncate text-sm font-medium text-ink-gray-8">
             {{ user.full_name }}
           </span>
           <LucideChevronsUpDown
-            v-if="!collapsed"
+            v-if="!iconsOnly"
             class="ml-auto size-3.5 text-ink-gray-5"
           />
         </button>
@@ -114,31 +134,47 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { Avatar, Dropdown } from 'frappe-ui'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Avatar, Dropdown, useTheme } from 'frappe-ui'
 import SidebarLink from './SidebarLink.vue'
 import CreateProjectDialog from './CreateProjectDialog.vue'
 import { logout, permissions, user } from '@/data/session'
 import { loadProjects, loadingProjects, projects } from '@/data/projects'
+import { closeSidebar, isMobile, sidebarOpen } from '@/data/ui'
+import { emit as emitBus, EVENTS } from '@/data/bus'
 
 const router = useRouter()
+const route = useRoute()
 const collapsed = ref(localStorage.getItem('pb:sidebar-collapsed') === '1')
 const showNewProject = ref(false)
 
-function toggle() {
+/** The drawer is always full width; only the desktop rail collapses. */
+const iconsOnly = computed(() => collapsed.value && !isMobile.value)
+
+function toggleCollapsed() {
   collapsed.value = !collapsed.value
   localStorage.setItem('pb:sidebar-collapsed', collapsed.value ? '1' : '0')
 }
 
 // Open projects first - the closed ones stay reachable from the Projects page.
 const recentProjects = computed(() =>
-  [...projects.value]
-    .filter((p) => p.status === 'Open')
-    .slice(0, 25),
+  [...projects.value].filter((p) => p.status === 'Open').slice(0, 25),
 )
 
+const { currentTheme, setTheme } = useTheme()
+
 const userMenu = computed(() => [
+  {
+    label: `Theme: ${themeLabel.value}`,
+    icon: currentTheme.value === 'dark' ? 'moon' : 'sun',
+    onClick: cycleTheme,
+  },
+  {
+    label: 'Keyboard shortcuts',
+    icon: 'command',
+    onClick: () => emitBus(EVENTS.SHOW_SHORTCUTS),
+  },
   {
     label: 'Open in Desk',
     icon: 'external-link',
@@ -147,10 +183,35 @@ const userMenu = computed(() => [
   { label: 'Log out', icon: 'log-out', onClick: logout },
 ])
 
+const themeLabel = computed(
+  () => ({ light: 'Light', dark: 'Dark', system: 'System' })[currentTheme.value] || 'System',
+)
+
+/** light -> dark -> system, the usual three-state cycle. */
+function cycleTheme() {
+  const next = { light: 'dark', dark: 'system', system: 'light' }[currentTheme.value] || 'dark'
+  setTheme(next)
+}
+
 function onProjectCreated(name) {
   loadProjects({ force: true })
+  closeSidebar()
   router.push({ name: 'Board', params: { project: name } })
 }
+
+// Navigating away is the drawer's cue to get out of the way.
+watch(() => route.fullPath, closeSidebar)
+
+// Lock background scrolling while the drawer covers the page.
+watch(sidebarOpen, (open) => {
+  document.body.style.overflow = open && isMobile.value ? 'hidden' : ''
+})
+watch(isMobile, (mobile) => {
+  if (!mobile) {
+    closeSidebar()
+    document.body.style.overflow = ''
+  }
+})
 
 onMounted(() => loadProjects())
 </script>

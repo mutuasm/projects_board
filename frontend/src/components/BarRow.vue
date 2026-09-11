@@ -10,7 +10,9 @@
       class="size-1.5 shrink-0 rounded-full"
       :class="dotClass"
     />
-    <span class="w-28 shrink-0 truncate text-xs text-ink-gray-7">{{ label }}</span>
+    <span class="w-20 shrink-0 truncate text-xs text-ink-gray-7 sm:w-28">
+      {{ label }}
+    </span>
     <div class="h-2 flex-1 overflow-hidden rounded-full bg-surface-gray-2">
       <div
         class="h-full rounded-full transition-all"

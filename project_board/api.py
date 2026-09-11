@@ -14,7 +14,7 @@ from frappe import _
 from frappe.desk.form.assign_to import add as assign_to_add
 from frappe.desk.form.assign_to import remove as assign_to_remove
 from frappe.query_builder.functions import Count
-from frappe.utils import cint, flt, get_datetime, getdate, now_datetime, today
+from frappe.utils import cint, flt, get_datetime, getdate, now_datetime, nowtime, today
 
 # Fields the board is allowed to write on a Task. Anything else has to go
 # through the desk form, which keeps this endpoint from becoming a generic
@@ -55,6 +55,9 @@ PROJECT_WRITABLE_FIELDS = {
 	"department",
 	"cost_center",
 	"estimated_costing",
+	"project_template",
+	"holiday_list",
+	"sales_order",
 }
 
 TASK_LIST_FIELDS = [
@@ -78,6 +81,8 @@ TASK_LIST_FIELDS = [
 	"completed_on",
 	"department",
 	"_assign",
+	"_user_tags",
+	"depends_on_tasks",
 	"modified",
 	"creation",
 	"owner",
@@ -131,6 +136,7 @@ def get_boot_info():
 		"can_create_project": frappe.has_permission("Project", ptype="create"),
 		"can_create_task": frappe.has_permission("Task", ptype="create"),
 		"can_submit_timesheet": frappe.has_permission("Timesheet", ptype="create"),
+		"can_post_update": frappe.has_permission("Project Update", ptype="create"),
 		"options": get_field_options(),
 	}
 
@@ -156,6 +162,7 @@ def get_field_options():
 		"task_types": frappe.get_all("Task Type", pluck="name", order_by="name"),
 		"project_types": frappe.get_all("Project Type", pluck="name", order_by="name"),
 		"activity_types": frappe.get_all("Activity Type", pluck="name", order_by="name"),
+		"departments": frappe.get_all("Department", pluck="name", order_by="name", limit_page_length=200),
 	}
 
 
@@ -203,8 +210,16 @@ def _attach_assignees(rows: list[dict]) -> list[dict]:
 			for email in row["assignees"]
 		]
 		row.pop("_assign", None)
+		row["tags"] = _parse_tags(row.pop("_user_tags", None))
 
 	return rows
+
+
+def _parse_tags(value) -> list[str]:
+	"""`_user_tags` is a comma-joined string with a leading comma."""
+	if not value:
+		return []
+	return [t for t in str(value).split(",") if t.strip()]
 
 
 def _attach_comment_counts(rows: list[dict]) -> list[dict]:
@@ -575,7 +590,7 @@ def get_tasks(
 		limit_page_length=cint(limit) or 0,
 	)
 
-	return _attach_comment_counts(_attach_assignees(tasks))
+	return _attach_epics(_attach_blocked_state(_attach_comment_counts(_attach_assignees(tasks))))
 
 
 @frappe.whitelist()
@@ -593,7 +608,7 @@ def get_my_tasks(include_completed: int = 0):
 		limit_page_length=0,
 	)
 
-	tasks = _attach_comment_counts(_attach_assignees(tasks))
+	tasks = _attach_epics(_attach_blocked_state(_attach_comment_counts(_attach_assignees(tasks))))
 	_attach_project_titles(tasks)
 	return tasks
 
@@ -639,7 +654,34 @@ def get_task(name: str):
 			limit_page_length=0,
 		)
 	)
-	data["depends_on"] = _dependency_details([d.task for d in doc.depends_on])
+	subtasks = data["subtasks"]
+	data["subtask_progress"] = {
+		"total": len(subtasks),
+		"done": sum(1 for t in subtasks if t["status"] in ("Completed", "Cancelled")),
+	}
+	data["epic"] = _attach_epics([{"parent_task": doc.parent_task}])[0]["epic"]
+	# ERPNext files every child under its parent's `depends_on`; those are
+	# contents, not blockers, so they belong in Child issues instead.
+	data["depends_on"] = [
+		d
+		for d in _dependency_details([d.task for d in doc.depends_on])
+		if d.get("parent_task") != name
+	]
+	data["is_blocked"] = any(
+		d["status"] not in ("Completed", "Cancelled") for d in data["depends_on"]
+	)
+	data["tags"] = _parse_tags(doc._user_tags)
+	data["history"] = get_task_history(name, limit=20)
+	data["blocks"] = [
+		b
+		for b in frappe.get_all(
+			"Task",
+			filters={"depends_on_tasks": ("like", f"%{name}%")},
+			fields=["name", "subject", "status", "priority"],
+			ignore_permissions=True,
+		)
+		if b.name != doc.parent_task
+	]
 	data["can_write"] = frappe.has_permission("Task", ptype="write", doc=name)
 	data["can_delete"] = frappe.has_permission("Task", ptype="delete", doc=name)
 
@@ -652,7 +694,7 @@ def _dependency_details(task_names: list[str]) -> list[dict]:
 	return frappe.get_all(
 		"Task",
 		filters={"name": ("in", task_names)},
-		fields=["name", "subject", "status", "priority"],
+		fields=["name", "subject", "status", "priority", "parent_task"],
 		ignore_permissions=True,
 	)
 
@@ -665,9 +707,21 @@ def create_task(**kwargs):
 	if not values.get("subject"):
 		frappe.throw(_("Subject is required"))
 
+	# ERPNext's Task.validate_status() calls close_all_assignments() while the
+	# document is still unsaved, which blows up on a task created directly in a
+	# closed state. Insert it open, then move it - by then the row exists.
+	closed_status = None
+	if values.get("status") in ("Completed", "Cancelled"):
+		closed_status = values.pop("status")
+		values["status"] = "Open"
+
 	doc = frappe.new_doc("Task")
 	doc.update(values)
 	doc.insert()
+
+	if closed_status:
+		doc.status = closed_status
+		doc.save()
 
 	assignees = kwargs.get("assignees")
 	if isinstance(assignees, str):
@@ -727,7 +781,7 @@ def move_task(name: str, status: str):
 def _move_task_response(name: str) -> dict:
 	"""Re-read via get_list so the row has the exact shape the board renders."""
 	row = frappe.get_list("Task", filters={"name": name}, fields=TASK_LIST_FIELDS)[0]
-	return _attach_comment_counts(_attach_assignees([row]))[0]
+	return _attach_epics(_attach_blocked_state(_attach_comment_counts(_attach_assignees([row]))))[0]
 
 
 @frappe.whitelist()
@@ -1023,6 +1077,23 @@ def get_project_stats(project: str):
 		"total_costing_amount": flt(doc.total_costing_amount),
 		"total_billable_amount": flt(doc.total_billable_amount),
 		"total_billed_amount": flt(doc.total_billed_amount),
+		"total_sales_amount": flt(doc.total_sales_amount),
+		"total_purchase_cost": flt(doc.total_purchase_cost),
+		"total_consumed_material_cost": flt(doc.total_consumed_material_cost),
+		"gross_margin": flt(doc.gross_margin),
+		"per_gross_margin": flt(doc.per_gross_margin),
+		"currency": frappe.get_cached_value("Company", doc.company, "default_currency")
+		if doc.company
+		else None,
+		"blocked": frappe.db.count(
+			"Task",
+			{
+				"project": project,
+				"is_template": 0,
+				"status": ("not in", ["Completed", "Cancelled"]),
+				"depends_on_tasks": ("!=", ""),
+			},
+		),
 	}
 
 
@@ -1066,3 +1137,499 @@ def get_activity(project: str, limit: int = 30):
 		comment["user_image"] = info.get("user_image")
 
 	return comments
+
+
+# ---------------------------------------------------------------------------
+# blocked-by state
+# ---------------------------------------------------------------------------
+
+
+def _attach_blocked_state(rows: list[dict]) -> list[dict]:
+	"""Mark tasks whose dependencies are not finished yet.
+
+	`Task.depends_on_tasks` is the comma-joined mirror ERPNext keeps of the
+	`Task Depends On` child table, so one extra query covers the whole board.
+	"""
+	blockers: set[str] = set()
+	for row in rows:
+		for name in _parse_csv(row.get("depends_on_tasks")):
+			blockers.add(name)
+
+	open_blockers: dict[str, str | None] = {}
+	if blockers:
+		open_blockers = {
+			d.name: d.parent_task
+			for d in frappe.get_all(
+				"Task",
+				filters={"name": ("in", list(blockers)), "status": ("not in", ["Completed", "Cancelled"])},
+				fields=["name", "parent_task"],
+				ignore_permissions=True,
+			)
+		}
+
+	for row in rows:
+		deps = _parse_csv(row.pop("depends_on_tasks", None))
+		# ERPNext's populate_depends_on() files every child under its parent's
+		# `depends_on`, so an epic would otherwise look blocked by its own
+		# contents. A parent waiting on its children is containment, not a block.
+		row["blocked_by"] = [
+			d for d in deps if d in open_blockers and open_blockers[d] != row.get("name")
+		]
+		row["is_blocked"] = bool(row["blocked_by"])
+
+	return rows
+
+
+def _parse_csv(value) -> list[str]:
+	if not value:
+		return []
+	return [v.strip() for v in str(value).split(",") if v.strip()]
+
+
+# ---------------------------------------------------------------------------
+# labels (native Tag / Tag Link)
+# ---------------------------------------------------------------------------
+
+
+@frappe.whitelist()
+def get_all_tags(txt: str = ""):
+	"""Existing Tags, for the label autocomplete."""
+	return frappe.get_all(
+		"Tag",
+		filters=[["name", "like", f"%{txt}%"]] if txt else None,
+		pluck="name",
+		limit_page_length=50,
+		order_by="name",
+	)
+
+
+@frappe.whitelist()
+def set_task_tags(task: str, tags):
+	"""Sync a Task's labels through Frappe's own tag API."""
+	from frappe.desk.doctype.tag.tag import add_tag, remove_tag
+
+	frappe.has_permission("Task", ptype="write", doc=task, throw=True)
+
+	if isinstance(tags, str):
+		tags = json.loads(tags)
+	wanted = {t.strip() for t in (tags or []) if t and t.strip()}
+
+	current = set(_parse_tags(frappe.db.get_value("Task", task, "_user_tags")))
+
+	for tag in current - wanted:
+		remove_tag(tag, "Task", task)
+	for tag in wanted - current:
+		add_tag(tag, "Task", task)
+
+	return sorted(wanted)
+
+
+# ---------------------------------------------------------------------------
+# project templates (native Project Template)
+# ---------------------------------------------------------------------------
+
+
+@frappe.whitelist()
+def get_project_templates():
+	"""Templates a new project can be created from, with their task counts."""
+	templates = frappe.get_all(
+		"Project Template",
+		filters={"disabled": 0},
+		fields=["name", "project_type"],
+		order_by="name",
+	)
+
+	if not templates:
+		return []
+
+	counts = {}
+	for row in frappe.get_all(
+		"Project Template Task",
+		filters={"parent": ("in", [t.name for t in templates])},
+		fields=["parent", "subject"],
+		ignore_permissions=True,
+	):
+		counts.setdefault(row.parent, []).append(row.subject)
+
+	for template in templates:
+		tasks = counts.get(template.name, [])
+		template["task_count"] = len(tasks)
+		template["sample_tasks"] = tasks[:4]
+
+	return templates
+
+
+# ---------------------------------------------------------------------------
+# project updates (native Project Update)
+# ---------------------------------------------------------------------------
+
+
+@frappe.whitelist()
+def get_project_updates(project: str, limit: int = 20):
+	frappe.has_permission("Project", ptype="read", doc=project, throw=True)
+
+	updates = frappe.get_all(
+		"Project Update",
+		filters={"project": project, "docstatus": ("<", 2)},
+		fields=["name", "date", "time", "owner", "creation", "docstatus"],
+		order_by="creation desc",
+		limit_page_length=cint(limit),
+	)
+	if not updates:
+		return []
+
+	notes = {}
+	for row in frappe.get_all(
+		"Project User",
+		filters={"parent": ("in", [u.name for u in updates]), "parenttype": "Project Update"},
+		fields=["parent", "user", "project_status"],
+		ignore_permissions=True,
+	):
+		notes.setdefault(row.parent, []).append(row)
+
+	users = _user_map({u.owner for u in updates})
+	for update in updates:
+		info = users.get(update.owner) or {}
+		update["full_name"] = info.get("full_name") or update.owner
+		update["user_image"] = info.get("user_image")
+		update["notes"] = notes.get(update.name, [])
+		update["status_text"] = "\n\n".join(
+			n.project_status for n in update["notes"] if n.project_status
+		)
+
+	return updates
+
+
+@frappe.whitelist()
+def add_project_update(project: str, status: str):
+	"""Post a status check-in against the project."""
+	frappe.has_permission("Project", ptype="read", doc=project, throw=True)
+	frappe.has_permission("Project Update", ptype="create", throw=True)
+
+	if not (status or "").strip():
+		frappe.throw(_("Write something before posting an update"))
+
+	doc = frappe.new_doc("Project Update")
+	doc.project = project
+	doc.date = today()
+	doc.time = nowtime()
+	doc.append(
+		"users",
+		{"user": frappe.session.user, "project_status": status.strip()},
+	)
+	doc.insert()
+
+	return get_project_updates(project, limit=1)[0]
+
+
+# ---------------------------------------------------------------------------
+# attachments
+# ---------------------------------------------------------------------------
+
+
+@frappe.whitelist()
+def delete_attachment(name: str):
+	"""Remove a File attached to a Task the user can write to."""
+	file = frappe.db.get_value(
+		"File", name, ["attached_to_doctype", "attached_to_name", "owner"], as_dict=True
+	)
+	if not file:
+		frappe.throw(_("Attachment not found"))
+
+	if file.attached_to_doctype and file.attached_to_name:
+		frappe.has_permission(
+			file.attached_to_doctype, ptype="write", doc=file.attached_to_name, throw=True
+		)
+	elif file.owner != frappe.session.user:
+		frappe.throw(_("Not permitted"), frappe.PermissionError)
+
+	frappe.delete_doc("File", name)
+	return True
+
+
+# ---------------------------------------------------------------------------
+# dependencies
+# ---------------------------------------------------------------------------
+
+
+@frappe.whitelist()
+def search_tasks(project: str | None = None, txt: str = "", exclude=None, limit: int = 20):
+	"""Task picker for the 'blocked by' and parent-task fields."""
+	filters = [["is_template", "=", 0]]
+	if project:
+		filters.append(["project", "=", project])
+
+	if isinstance(exclude, str):
+		exclude = json.loads(exclude) if exclude.startswith("[") else [exclude]
+	if exclude:
+		filters.append(["name", "not in", exclude])
+
+	return frappe.get_list(
+		"Task",
+		filters=filters,
+		or_filters=[["subject", "like", f"%{txt}%"], ["name", "like", f"%{txt}%"]] if txt else None,
+		fields=["name", "subject", "status", "priority"],
+		limit_page_length=cint(limit),
+		order_by="modified desc",
+	)
+
+
+# ---------------------------------------------------------------------------
+# bulk actions
+# ---------------------------------------------------------------------------
+
+
+@frappe.whitelist()
+def bulk_update_tasks(names, values):
+	"""Apply the same change to several tasks, reporting per-task failures."""
+	if isinstance(names, str):
+		names = json.loads(names)
+	if isinstance(values, str):
+		values = json.loads(values)
+
+	assignees = values.pop("assignees", None)
+	unknown = set(values) - TASK_WRITABLE_FIELDS
+	if unknown:
+		frappe.throw(_("Cannot update field(s) from the board: {0}").format(", ".join(sorted(unknown))))
+
+	updated, failed = [], []
+	for name in names or []:
+		try:
+			if not frappe.has_permission("Task", ptype="write", doc=name):
+				raise frappe.PermissionError(_("No write access"))
+			if values:
+				doc = frappe.get_doc("Task", name)
+				doc.update(values)
+				doc.save()
+			if assignees is not None:
+				set_assignees(name, assignees)
+			updated.append(name)
+		except Exception as e:
+			# one bad task must not sink the whole batch
+			frappe.db.rollback()
+			failed.append({"task": name, "error": str(e)})
+
+	rows = (
+		_attach_blocked_state(
+			_attach_comment_counts(
+				_attach_assignees(
+					frappe.get_list("Task", filters={"name": ("in", updated)}, fields=TASK_LIST_FIELDS)
+				)
+			)
+		)
+		if updated
+		else []
+	)
+
+	return {"updated": rows, "failed": failed}
+
+
+@frappe.whitelist()
+def bulk_delete_tasks(names):
+	if isinstance(names, str):
+		names = json.loads(names)
+
+	deleted, failed = [], []
+	for name in names or []:
+		try:
+			frappe.has_permission("Task", ptype="delete", doc=name, throw=True)
+			frappe.delete_doc("Task", name)
+			deleted.append(name)
+		except Exception as e:
+			frappe.db.rollback()
+			failed.append({"task": name, "error": str(e)})
+
+	return {"deleted": deleted, "failed": failed}
+
+
+# ---------------------------------------------------------------------------
+# saved views (native List Filter)
+# ---------------------------------------------------------------------------
+
+
+@frappe.whitelist()
+def get_saved_views():
+	"""Per-user saved filters, stored in Frappe's own List Filter doctype."""
+	return [
+		{"name": v.name, "label": v.filter_name, "filters": frappe.parse_json(v.filters or "{}")}
+		for v in frappe.get_all(
+			"List Filter",
+			filters={"reference_doctype": "Task", "for_user": frappe.session.user},
+			fields=["name", "filter_name", "filters"],
+			order_by="filter_name",
+		)
+	]
+
+
+@frappe.whitelist()
+def save_view(label: str, filters):
+	if not (label or "").strip():
+		frappe.throw(_("Name this view before saving it"))
+
+	if not isinstance(filters, str):
+		filters = frappe.as_json(filters)
+
+	existing = frappe.db.get_value(
+		"List Filter",
+		{"reference_doctype": "Task", "for_user": frappe.session.user, "filter_name": label.strip()},
+		"name",
+	)
+	if existing:
+		doc = frappe.get_doc("List Filter", existing)
+		doc.filters = filters
+		doc.save(ignore_permissions=True)
+	else:
+		doc = frappe.get_doc(
+			{
+				"doctype": "List Filter",
+				"reference_doctype": "Task",
+				"for_user": frappe.session.user,
+				"filter_name": label.strip(),
+				"filters": filters,
+			}
+		).insert(ignore_permissions=True)
+
+	return {"name": doc.name, "label": doc.filter_name, "filters": frappe.parse_json(doc.filters)}
+
+
+@frappe.whitelist()
+def delete_saved_view(name: str):
+	doc = frappe.get_doc("List Filter", name)
+	if doc.for_user != frappe.session.user:
+		frappe.throw(_("You can only delete your own views"), frappe.PermissionError)
+	doc.delete(ignore_permissions=True)
+	return True
+
+
+# ---------------------------------------------------------------------------
+# audit trail (native Version)
+# ---------------------------------------------------------------------------
+
+TRACKED_LABELS = {
+	"status": "status",
+	"priority": "priority",
+	"subject": "subject",
+	"exp_end_date": "due date",
+	"exp_start_date": "start date",
+	"task_weight": "weight",
+	"progress": "progress",
+	"type": "type",
+	"parent_task": "parent",
+}
+
+
+@frappe.whitelist()
+def get_task_history(task: str, limit: int = 30):
+	"""Field-level change log, read from the Version records Frappe already writes."""
+	frappe.has_permission("Task", ptype="read", doc=task, throw=True)
+
+	versions = frappe.get_all(
+		"Version",
+		filters={"ref_doctype": "Task", "docname": task},
+		fields=["name", "owner", "creation", "data"],
+		order_by="creation desc",
+		limit_page_length=cint(limit),
+		ignore_permissions=True,
+	)
+
+	users = _user_map({v.owner for v in versions})
+	entries = []
+	for version in versions:
+		data = frappe.parse_json(version.data or "{}")
+		changes = []
+		for change in data.get("changed") or []:
+			fieldname, old, new = (change + [None, None, None])[:3]
+			if fieldname not in TRACKED_LABELS:
+				continue
+			changes.append({"field": TRACKED_LABELS[fieldname], "from": old, "to": new})
+
+		if not changes:
+			continue
+
+		info = users.get(version.owner) or {}
+		entries.append(
+			{
+				"name": version.name,
+				"owner": version.owner,
+				"full_name": info.get("full_name") or version.owner,
+				"user_image": info.get("user_image"),
+				"creation": version.creation,
+				"changes": changes,
+			}
+		)
+
+	return entries
+
+
+# ---------------------------------------------------------------------------
+# epics (native is_group / parent_task)
+# ---------------------------------------------------------------------------
+
+
+def _attach_epics(rows: list[dict]) -> list[dict]:
+	"""Resolve each task's parent into a usable epic chip.
+
+	`parent_task` is only an id, so the board would otherwise render
+	"TASK-2026-00008" where a name belongs.
+	"""
+	parents = {r.get("parent_task") for r in rows if r.get("parent_task")}
+	lookup = {}
+	if parents:
+		lookup = {
+			d.name: d
+			for d in frappe.get_all(
+				"Task",
+				filters={"name": ("in", list(parents))},
+				fields=["name", "subject", "color"],
+				ignore_permissions=True,
+			)
+		}
+
+	for row in rows:
+		parent = lookup.get(row.get("parent_task"))
+		row["epic"] = (
+			{"name": parent.name, "subject": parent.subject, "color": parent.color}
+			if parent
+			else None
+		)
+
+	return rows
+
+
+@frappe.whitelist()
+def get_project_epics(project: str):
+	"""Group tasks with their child rollups, for the board's epic rail."""
+	frappe.has_permission("Project", ptype="read", doc=project, throw=True)
+
+	epics = frappe.get_list(
+		"Task",
+		filters={"project": project, "is_group": 1, "is_template": 0},
+		fields=["name", "subject", "color", "status", "priority", "exp_end_date", "progress"],
+		order_by="creation asc",
+		limit_page_length=0,
+	)
+	if not epics:
+		return []
+
+	Task = frappe.qb.DocType("Task")
+	rows = (
+		frappe.qb.from_(Task)
+		.select(Task.parent_task, Task.status, Count(Task.name).as_("count"))
+		.where(Task.parent_task.isin([e.name for e in epics]))
+		.groupby(Task.parent_task, Task.status)
+	).run(as_dict=True)
+
+	counts: dict[str, dict[str, int]] = {}
+	for row in rows:
+		counts.setdefault(row.parent_task, {})[row.status] = row.count
+
+	for epic in epics:
+		by_status = counts.get(epic.name, {})
+		total = sum(by_status.values())
+		done = by_status.get("Completed", 0) + by_status.get("Cancelled", 0)
+		epic["total"] = total
+		epic["done"] = done
+		epic["open"] = total - done
+		epic["percent"] = round((done / total) * 100) if total else 0
+
+	return epics

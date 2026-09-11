@@ -7,7 +7,7 @@
           <span class="font-medium text-ink-gray-8">{{ task?.subject }}</span>.
         </p>
 
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <FormControl
             v-model.number="form.hours"
             type="number"
@@ -41,7 +41,7 @@
     </template>
 
     <template #actions>
-      <div class="flex justify-end gap-2">
+      <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button @click="show = false">Cancel</Button>
         <Button variant="solid" :loading="saving" @click="submit">Log time</Button>
       </div>

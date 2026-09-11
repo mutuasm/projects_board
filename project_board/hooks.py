@@ -9,15 +9,12 @@ required_apps = ["frappe/erpnext"]
 
 # Apps screen
 # -----------
-add_to_apps_screen = [
-	{
-		"name": "project_board",
-		"logo": "/assets/project_board/images/logo.svg",
-		"title": "Project Board",
-		"route": "/project-board",
-		"has_permission": "project_board.api.check_app_permission",
-	}
-]
+# No tile of our own: the existing ERPNext "Projects" workspace is repointed at
+# /project-board by project_board.install, so Projects is the single entry point.
+
+after_install = "project_board.install.after_install"
+after_migrate = "project_board.install.after_migrate"
+before_uninstall = "project_board.install.before_uninstall"
 
 # Website
 # -------

@@ -9,7 +9,7 @@
     <div v-else class="flex min-h-0 flex-1">
       <!-- task names -->
       <div
-        class="thin-scrollbar w-64 shrink-0 overflow-y-auto border-r border-outline-gray-2"
+        class="thin-scrollbar w-32 shrink-0 overflow-y-auto border-r border-outline-gray-2 sm:w-48 lg:w-64"
         ref="labelScroller"
         @scroll="syncScroll('labels')"
       >
@@ -17,7 +17,7 @@
         <div
           v-for="task in scheduled"
           :key="task.name"
-          class="flex h-10 cursor-pointer items-center gap-2 border-b border-outline-gray-1 px-3 hover:bg-surface-gray-1"
+          class="flex h-10 cursor-pointer items-center gap-2 border-b border-outline-gray-1 px-2 hover:bg-surface-gray-1 sm:px-3"
           @click="openTask(task.name)"
         >
           <span class="size-1.5 shrink-0 rounded-full" :class="statusStyle(task.status).dot" />
@@ -39,10 +39,13 @@
             <div
               v-for="month in months"
               :key="month.key"
-              class="flex items-center border-r border-outline-gray-2 px-2 text-xs font-medium text-ink-gray-6"
+              class="flex items-center border-r border-outline-gray-2 text-xs font-medium text-ink-gray-6"
               :style="{ width: `${month.days * dayWidth}px` }"
             >
-              {{ month.label }}
+              <!-- pin the label so it stays readable while the chart scrolls -->
+              <span class="sticky left-0 whitespace-nowrap bg-surface-white px-2">
+                {{ month.label }}
+              </span>
             </div>
           </div>
 
@@ -61,7 +64,7 @@
             >
               <Tooltip :text="tooltip(task)">
                 <button
-                  class="absolute top-2 h-6 rounded transition-opacity hover:opacity-80"
+                  class="absolute top-2.5 h-5 rounded-[4px] transition-opacity hover:opacity-80"
                   :class="barClass(task)"
                   :style="barStyle(task)"
                   @click="openTask(task.name)"
@@ -86,17 +89,19 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { Tooltip } from 'frappe-ui'
 import EmptyState from '@/components/EmptyState.vue'
 import { visibleTasks } from '@/data/board'
+import { isNarrow } from '@/data/ui'
 import { statusStyle } from '@/utils/constants'
 import { dayjs, formatDate } from '@/utils/format'
 import { openTask } from '@/utils/taskPanel'
 
 defineProps({ project: { type: String, required: true } })
 
-const dayWidth = 26
+/** Narrower days on a phone so a couple of weeks still fit on screen. */
+const dayWidth = computed(() => (isNarrow.value ? 16 : 26))
 const labelScroller = ref(null)
 const chartScroller = ref(null)
 let syncing = false
@@ -155,16 +160,17 @@ function barStyle(task) {
   const offset = task._start.diff(range.value.start, 'day')
   const span = Math.max(task._end.diff(task._start, 'day') + 1, 1)
   return {
-    left: `${offset * dayWidth}px`,
-    width: `${span * dayWidth - 4}px`,
+    left: `${offset * dayWidth.value}px`,
+    width: `${span * dayWidth.value - 4}px`,
   }
 }
 
 function barClass(task) {
-  if (task.status === 'Completed') return 'bg-green-600'
+  if (task.status === 'Completed') return 'bg-green-600/90'
   if (task.status === 'Cancelled') return 'bg-gray-400'
   if (task.status === 'Overdue') return 'bg-red-500'
   if (task.is_milestone) return 'bg-amber-500'
+  if (task.is_group) return 'bg-violet-500'
   return 'bg-blue-500'
 }
 
@@ -173,6 +179,24 @@ function tooltip(task) {
   const end = formatDate(task.exp_end_date)
   return `${task.subject} · ${start || '?'} → ${end || '?'}`
 }
+
+/**
+ * Open on today rather than at the project's start date - on a phone the
+ * visible window is only a couple of weeks wide, so the default view would
+ * otherwise be months of history.
+ */
+watch(
+  todayOffset,
+  async (offset) => {
+    if (offset === null || !scheduled.value.length) return
+    await nextTick()
+    const el = chartScroller.value
+    if (!el) return
+    const target = offset * dayWidth.value - el.clientWidth / 4
+    el.scrollLeft = Math.max(target, 0)
+  },
+  { immediate: true, flush: 'post' },
+)
 
 /** Keep the label column and the chart rows lined up while scrolling. */
 function syncScroll(source) {

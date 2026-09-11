@@ -11,6 +11,7 @@ export const api = {
   setProjectMembers: (project, users) =>
     call(`${NS}.set_project_members`, { project, users }),
   getProjectStats: (project) => call(`${NS}.get_project_stats`, { project }),
+  getProjectEpics: (project) => call(`${NS}.get_project_epics`, { project }),
   getActivity: (project, limit = 30) => call(`${NS}.get_activity`, { project, limit }),
 
   // tasks
@@ -34,6 +35,36 @@ export const api = {
 
   // people
   searchUsers: (txt = '', limit = 20) => call(`${NS}.search_users`, { txt, limit }),
+
+  // labels (native Tag / Tag Link)
+  getAllTags: (txt = '') => call(`${NS}.get_all_tags`, { txt }),
+  setTaskTags: (task, tags) => call(`${NS}.set_task_tags`, { task, tags }),
+
+  // project templates + status updates (native Projects doctypes)
+  getProjectTemplates: () => call(`${NS}.get_project_templates`),
+  getProjectUpdates: (project, limit = 20) =>
+    call(`${NS}.get_project_updates`, { project, limit }),
+  addProjectUpdate: (project, status) =>
+    call(`${NS}.add_project_update`, { project, status }),
+
+  // attachments
+  deleteAttachment: (name) => call(`${NS}.delete_attachment`, { name }),
+
+  // dependencies
+  searchTasks: (params) => call(`${NS}.search_tasks`, params),
+
+  // bulk actions
+  bulkUpdateTasks: (names, values) =>
+    call(`${NS}.bulk_update_tasks`, { names, values }),
+  bulkDeleteTasks: (names) => call(`${NS}.bulk_delete_tasks`, { names }),
+
+  // saved views (native List Filter)
+  getSavedViews: () => call(`${NS}.get_saved_views`),
+  saveView: (label, filters) => call(`${NS}.save_view`, { label, filters }),
+  deleteSavedView: (name) => call(`${NS}.delete_saved_view`, { name }),
+
+  // audit trail (native Version)
+  getTaskHistory: (task, limit = 30) => call(`${NS}.get_task_history`, { task, limit }),
 
   // time
   logTime: (payload) => call(`${NS}.log_time`, payload),

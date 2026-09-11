@@ -42,6 +42,12 @@ const routes = [
         component: () => import('@/pages/project/OverviewView.vue'),
         props: true,
       },
+      {
+        path: 'updates',
+        name: 'Updates',
+        component: () => import('@/pages/project/UpdatesView.vue'),
+        props: true,
+      },
     ],
   },
   {

@@ -1,12 +1,12 @@
 <template>
-  <div class="thin-scrollbar h-full overflow-y-auto px-5 py-4">
+  <div class="thin-scrollbar h-full overflow-y-auto px-4 pb-24 pt-4 sm:px-5 sm:pb-6">
     <div v-if="!stats" class="flex h-40 items-center justify-center">
       <LoadingIndicator class="size-5 text-ink-gray-5" />
     </div>
 
     <div v-else class="mx-auto flex max-w-6xl flex-col gap-5">
       <!-- KPI row: headline numbers are tiles, not one-bar charts -->
-      <section class="grid grid-cols-2 gap-3 md:grid-cols-5">
+      <section class="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-5">
         <StatTile label="Tasks" :value="totalTasks" :sub="`${stats.by_status.Completed || 0} done`">
           <template #icon><LucideListChecks class="size-3.5 text-ink-gray-5" /></template>
         </StatTile>
@@ -22,23 +22,24 @@
           <template #icon><LucideUserX class="size-3.5 text-ink-gray-5" /></template>
         </StatTile>
         <StatTile
+          label="Blocked"
+          :value="stats.blocked"
+          :value-class="stats.blocked ? 'text-ink-amber-3' : 'text-ink-gray-9'"
+          sub="waiting on another task"
+        >
+          <template #icon><LucideLock class="size-3.5 text-ink-gray-5" /></template>
+        </StatTile>
+        <StatTile
           label="Hours logged"
           :value="formatNumber(stats.actual_time)"
           :sub="`of ${formatNumber(stats.expected_time)} estimated`"
         >
           <template #icon><LucideTimer class="size-3.5 text-ink-gray-5" /></template>
         </StatTile>
-        <StatTile
-          label="Costing"
-          :value="formatCurrency(stats.total_costing_amount)"
-          :sub="`billable ${formatCurrency(stats.total_billable_amount)}`"
-        >
-          <template #icon><LucideBanknote class="size-3.5 text-ink-gray-5" /></template>
-        </StatTile>
       </section>
 
       <!-- completion meter: one ratio against a limit -->
-      <section class="rounded-lg border border-outline-gray-2 bg-surface-white p-4">
+      <section class="pb-panel p-4">
         <div class="flex items-baseline justify-between">
           <h2 class="text-sm font-semibold text-ink-gray-8">Completion</h2>
           <span class="text-xs text-ink-gray-5">
@@ -58,9 +59,45 @@
         </div>
       </section>
 
+      <!-- costing & billing: every figure is a native Project rollup -->
+      <section
+        v-if="hasFinancials"
+        class="pb-panel p-4"
+      >
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 class="text-sm font-semibold text-ink-gray-8">Costing &amp; billing</h2>
+          <span class="text-xs text-ink-gray-5">
+            Rolled up from Timesheets, Sales Orders and Purchase Invoices
+          </span>
+        </div>
+
+        <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+          <div v-for="item in financials" :key="item.label">
+            <dt class="text-xs text-ink-gray-5">{{ item.label }}</dt>
+            <dd class="text-sm font-medium tabular-nums" :class="item.className || 'text-ink-gray-9'">
+              {{ item.value }}
+            </dd>
+          </div>
+        </dl>
+
+        <!-- billable vs billed, as a share of one another -->
+        <div v-if="stats.total_billable_amount" class="mt-4">
+          <div class="mb-1 flex items-baseline justify-between text-xs">
+            <span class="text-ink-gray-5">Billed vs billable</span>
+            <span class="tabular-nums text-ink-gray-7">{{ billedPercent }}%</span>
+          </div>
+          <div class="h-2 w-full overflow-hidden rounded-full bg-surface-gray-2">
+            <div
+              class="h-full rounded-full bg-surface-green-3"
+              :style="{ width: `${billedPercent}%` }"
+            />
+          </div>
+        </div>
+      </section>
+
       <div class="grid gap-5 lg:grid-cols-2">
         <!-- tasks by status -->
-        <section class="rounded-lg border border-outline-gray-2 bg-surface-white p-4">
+        <section class="pb-panel p-4">
           <h2 class="text-sm font-semibold text-ink-gray-8">Tasks by status</h2>
           <div class="mt-3 flex flex-col gap-2">
             <BarRow
@@ -76,7 +113,7 @@
         </section>
 
         <!-- tasks by priority -->
-        <section class="rounded-lg border border-outline-gray-2 bg-surface-white p-4">
+        <section class="pb-panel p-4">
           <h2 class="text-sm font-semibold text-ink-gray-8">Tasks by priority</h2>
           <div class="mt-3 flex flex-col gap-2">
             <BarRow
@@ -92,14 +129,14 @@
       </div>
 
       <!-- workload: a table, because each row is a person plus two numbers -->
-      <section class="rounded-lg border border-outline-gray-2 bg-surface-white p-4">
+      <section class="pb-panel p-4">
         <h2 class="text-sm font-semibold text-ink-gray-8">Workload</h2>
         <table class="mt-3 w-full text-sm">
           <thead>
             <tr class="text-xs uppercase tracking-wide text-ink-gray-5">
               <th class="pb-2 text-left font-medium">Assignee</th>
               <th class="pb-2 text-left font-medium">Open</th>
-              <th class="w-1/2 pb-2 text-left font-medium">Load</th>
+              <th class="hidden w-1/2 pb-2 text-left font-medium sm:table-cell">Load</th>
               <th class="pb-2 text-right font-medium">Done</th>
             </tr>
           </thead>
@@ -119,7 +156,7 @@
                 </div>
               </td>
               <td class="py-1.5 tabular-nums text-ink-gray-8">{{ row.open }}</td>
-              <td class="py-1.5 pr-4">
+              <td class="hidden py-1.5 pr-4 sm:table-cell">
                 <div class="h-2 w-full overflow-hidden rounded-full bg-surface-gray-2">
                   <div
                     class="h-full rounded-full bg-surface-blue-3"
@@ -130,7 +167,9 @@
               <td class="py-1.5 text-right tabular-nums text-ink-gray-5">{{ row.done }}</td>
             </tr>
             <tr v-if="!stats.workload.length">
-              <td colspan="4" class="py-3 text-xs text-ink-gray-5">Nothing assigned yet.</td>
+              <td colspan="4" class="py-3 text-xs text-ink-gray-5">
+                Nothing assigned yet.
+              </td>
             </tr>
           </tbody>
         </table>
@@ -138,9 +177,9 @@
 
       <div class="grid gap-5 lg:grid-cols-2">
         <!-- native project fields, read-only summary -->
-        <section class="rounded-lg border border-outline-gray-2 bg-surface-white p-4">
+        <section class="pb-panel p-4">
           <h2 class="text-sm font-semibold text-ink-gray-8">Details</h2>
-          <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
+          <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm sm:grid-cols-2">
             <div v-for="item in details" :key="item.label">
               <dt class="text-xs text-ink-gray-5">{{ item.label }}</dt>
               <dd class="text-ink-gray-8">{{ item.value || '—' }}</dd>
@@ -148,7 +187,7 @@
           </dl>
         </section>
 
-        <section class="rounded-lg border border-outline-gray-2 bg-surface-white p-4">
+        <section class="pb-panel p-4">
           <h2 class="text-sm font-semibold text-ink-gray-8">Recent activity</h2>
           <ul class="mt-3 flex flex-col gap-3">
             <li
@@ -233,6 +272,48 @@ const maxPriority = computed(() =>
 const maxOpen = computed(() =>
   Math.max(1, ...(stats.value?.workload || []).map((r) => r.open)),
 )
+
+const currency = computed(() => stats.value?.currency || '')
+
+const money = (value) => formatCurrency(value, currency.value)
+
+const hasFinancials = computed(() =>
+  [
+    'estimated_costing',
+    'total_costing_amount',
+    'total_billable_amount',
+    'total_billed_amount',
+    'total_sales_amount',
+    'total_purchase_cost',
+  ].some((key) => Number(stats.value?.[key] || 0)),
+)
+
+const financials = computed(() => {
+  const s = stats.value || {}
+  return [
+    { label: 'Estimated cost', value: money(s.estimated_costing) },
+    { label: 'Actual cost', value: money(s.total_costing_amount) },
+    { label: 'Purchase cost', value: money(s.total_purchase_cost) },
+    { label: 'Material cost', value: money(s.total_consumed_material_cost) },
+    { label: 'Sales order value', value: money(s.total_sales_amount) },
+    { label: 'Billable', value: money(s.total_billable_amount) },
+    { label: 'Billed', value: money(s.total_billed_amount) },
+    {
+      label: `Gross margin (${Math.round(s.per_gross_margin || 0)}%)`,
+      value: money(s.gross_margin),
+      className: Number(s.gross_margin) < 0 ? 'text-ink-red-3' : 'text-ink-green-3',
+    },
+  ]
+})
+
+const billedPercent = computed(() => {
+  const s = stats.value || {}
+  if (!s.total_billable_amount) return 0
+  return Math.min(
+    Math.round((Number(s.total_billed_amount) / Number(s.total_billable_amount)) * 100),
+    100,
+  )
+})
 
 const details = computed(() => [
   { label: 'Status', value: doc.value?.status },

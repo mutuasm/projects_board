@@ -21,32 +21,41 @@
     >
       <aside
         v-if="taskName"
-        class="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col border-l border-outline-gray-2 bg-surface-white shadow-2xl"
+        class="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-outline-gray-2 bg-surface-white pb-safe-bottom pt-safe-top shadow-lg sm:max-w-xl sm:border-l"
       >
         <!-- header -->
         <header
-          class="flex shrink-0 items-center gap-2 border-b border-outline-gray-2 px-4 py-2.5"
+          class="flex shrink-0 items-center gap-2 border-b border-outline-gray-2 px-3 py-2.5 sm:px-4"
         >
+          <button
+            class="tap-target -ml-1 grid place-items-center rounded p-1 text-ink-gray-7 hover:bg-surface-gray-2 sm:hidden"
+            aria-label="Close"
+            @click="close"
+          >
+            <LucideArrowLeft class="size-5" />
+          </button>
           <span class="font-mono text-xs text-ink-gray-5">{{ taskName }}</span>
-          <Badge v-if="task?.project_title" theme="gray" variant="subtle" size="sm">
+          <Badge
+            v-if="task?.project_title"
+            theme="gray"
+            variant="subtle"
+            size="sm"
+            class="hidden min-w-0 sm:inline-flex"
+          >
             {{ task.project_title }}
           </Badge>
           <div class="ml-auto flex items-center gap-1">
-            <Button
-              v-if="permissions.canSubmitTimesheet"
-              variant="ghost"
-              size="sm"
-              @click="showLogTime = true"
-            >
-              <template #prefix><LucideTimer class="size-4" /></template>
-              Log time
-            </Button>
+            <TaskTimer
+              v-if="permissions.canSubmitTimesheet && task"
+              :task="task"
+              @logged="reload"
+            />
             <Dropdown :options="menuOptions" placement="bottom-end">
               <Button variant="ghost" size="sm">
                 <LucideMoreHorizontal class="size-4" />
               </Button>
             </Dropdown>
-            <Button variant="ghost" size="sm" @click="close">
+            <Button variant="ghost" size="sm" class="hidden sm:inline-flex" @click="close">
               <LucideX class="size-4" />
             </Button>
           </div>
@@ -58,9 +67,22 @@
         <ErrorState v-else-if="loadError" :error="loadError" />
 
         <div v-else-if="task" class="thin-scrollbar min-h-0 flex-1 overflow-y-auto">
-          <div class="flex flex-col gap-5 px-4 py-4">
+          <div class="flex flex-col gap-5 px-3 py-4 sm:px-4">
             <!-- subject -->
+            <button
+              v-if="task.epic"
+              class="flex w-fit items-center gap-1.5 px-1.5 text-xs font-medium text-ink-gray-6 hover:text-ink-gray-8"
+              @click="open(task.epic.name)"
+            >
+              <span
+                class="size-2 shrink-0 rounded-[3px]"
+                :style="{ backgroundColor: task.epic.color || '#9ca3af' }"
+              />
+              {{ task.epic.subject }}
+            </button>
+
             <textarea
+              ref="subjectBox"
               v-model="draftSubject"
               rows="1"
               class="w-full resize-none rounded border border-transparent bg-transparent px-1.5 py-1 text-lg font-semibold leading-snug text-ink-gray-9 hover:border-outline-gray-2 focus:border-outline-gray-3 focus:outline-none"
@@ -71,7 +93,9 @@
             />
 
             <!-- properties -->
-            <dl class="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2">
+            <dl
+              class="grid grid-cols-[6rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2.5 sm:grid-cols-[7rem_minmax(0,1fr)]"
+            >
               <dt class="text-xs text-ink-gray-5">Status</dt>
               <dd>
                 <StatusPill
@@ -99,12 +123,20 @@
                 />
               </dd>
 
+              <dt class="text-xs text-ink-gray-5">Labels</dt>
+              <dd>
+                <TagInput
+                  :model-value="task.tags || []"
+                  :readonly="!task.can_write"
+                  @update:model-value="saveTags"
+                />
+              </dd>
+
               <dt class="text-xs text-ink-gray-5">Type</dt>
               <dd>
-                <Select
+                <NullableSelect
                   :model-value="task.type || ''"
                   :options="typeOptions"
-                  size="sm"
                   variant="ghost"
                   :disabled="!task.can_write"
                   @update:model-value="(v) => save({ type: v })"
@@ -116,7 +148,7 @@
                 <DatePicker
                   :value="dateOnly(task.exp_start_date)"
                   placeholder="Not set"
-                  variant="ghost"
+                  variant="subtle"
                   :readonly="!task.can_write"
                   @update:model-value="(v) => save({ exp_start_date: v })"
                 />
@@ -127,7 +159,7 @@
                 <DatePicker
                   :value="dateOnly(task.exp_end_date)"
                   placeholder="Not set"
-                  variant="ghost"
+                  variant="subtle"
                   :readonly="!task.can_write"
                   @update:model-value="(v) => save({ exp_end_date: v })"
                 />
@@ -150,20 +182,20 @@
               </dd>
 
               <dt class="text-xs text-ink-gray-5">Progress</dt>
-              <dd class="flex items-center gap-2">
-                <input
-                  v-model.number="draftProgress"
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  :disabled="!task.can_write"
-                  class="h-1 flex-1 accent-gray-800"
-                  @change="save({ progress: draftProgress })"
-                />
-                <span class="w-10 text-right text-xs tabular-nums text-ink-gray-7">
-                  {{ draftProgress }}%
-                </span>
+              <dd>
+                <Tooltip
+                  :text="
+                    progressLocked
+                      ? 'ERPNext pins a completed task at 100%'
+                      : 'Drag to set % progress'
+                  "
+                >
+                  <ProgressSlider
+                    v-model="draftProgress"
+                    :disabled="!task.can_write || progressLocked"
+                    @commit="(value) => save({ progress: value })"
+                  />
+                </Tooltip>
               </dd>
 
               <dt class="text-xs text-ink-gray-5">Time</dt>
@@ -191,12 +223,28 @@
               />
             </section>
 
-            <!-- subtasks -->
+            <!-- child issues -->
             <section v-if="task.subtasks?.length || task.is_group">
-              <div class="mb-1.5 flex items-center justify-between">
+              <div class="mb-1.5 flex items-center gap-2">
                 <h3 class="text-xs font-medium uppercase tracking-wide text-ink-gray-5">
-                  Subtasks
+                  Child issues
                 </h3>
+                <span
+                  v-if="task.subtask_progress?.total"
+                  class="text-xs tabular-nums text-ink-gray-4"
+                >
+                  {{ task.subtask_progress.done }} of {{ task.subtask_progress.total }} done
+                </span>
+                <span
+                  v-if="task.subtask_progress?.total"
+                  class="h-1 w-20 overflow-hidden rounded-full bg-surface-gray-2"
+                >
+                  <span
+                    class="block h-full rounded-full bg-surface-green-3"
+                    :style="{ width: `${subtaskPercent}%` }"
+                  />
+                </span>
+                <span class="ml-auto" />
                 <Button
                   v-if="task.is_group && permissions.canCreateTask"
                   variant="ghost"
@@ -220,51 +268,55 @@
                   </span>
                   <AvatarStack :users="sub.assignees || []" :max="2" size="xs" />
                 </li>
-                <li v-if="!task.subtasks?.length" class="py-2 text-xs text-ink-gray-5">
-                  No subtasks yet.
+                <li v-if="!task.subtasks?.length" class="py-2 text-xs text-ink-gray-4">
+                  Nothing under this epic yet.
                 </li>
               </ul>
             </section>
 
-            <!-- dependencies -->
-            <section v-if="task.depends_on?.length">
+            <!-- dependencies (native Task Depends On) -->
+            <section>
               <h3 class="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-gray-5">
                 Blocked by
               </h3>
+              <DependencyPicker
+                :dependencies="task.depends_on || []"
+                :task="task.name"
+                :project="task.project"
+                :readonly="!task.can_write"
+                @change="saveDependencies"
+                @open="open"
+              />
+            </section>
+
+            <section v-if="task.blocks?.length">
+              <h3 class="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-gray-5">
+                Blocks
+              </h3>
               <ul class="flex flex-col divide-y divide-outline-gray-1">
                 <li
-                  v-for="dep in task.depends_on"
+                  v-for="dep in task.blocks"
                   :key="dep.name"
                   class="flex cursor-pointer items-center gap-2 py-1.5 hover:bg-surface-gray-1"
                   @click="open(dep.name)"
                 >
                   <span class="size-1.5 rounded-full" :class="statusStyle(dep.status).dot" />
-                  <span class="flex-1 truncate text-sm text-ink-gray-8">
-                    {{ dep.subject }}
-                  </span>
-                  <Badge theme="gray" variant="subtle" size="sm">{{ dep.status }}</Badge>
+                  <span class="flex-1 truncate text-sm text-ink-gray-8">{{ dep.subject }}</span>
                 </li>
               </ul>
             </section>
 
             <!-- attachments -->
-            <section v-if="task.attachments?.length">
+            <section>
               <h3 class="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-gray-5">
                 Attachments
               </h3>
-              <ul class="flex flex-col gap-1">
-                <li v-for="file in task.attachments" :key="file.name">
-                  <a
-                    :href="file.file_url"
-                    target="_blank"
-                    rel="noopener"
-                    class="flex items-center gap-2 rounded px-1.5 py-1 text-sm text-ink-gray-7 hover:bg-surface-gray-1"
-                  >
-                    <LucidePaperclip class="size-3.5 text-ink-gray-5" />
-                    <span class="truncate">{{ file.file_name }}</span>
-                  </a>
-                </li>
-              </ul>
+              <TaskAttachments
+                :files="task.attachments || []"
+                :task="task.name"
+                :readonly="!task.can_write"
+                @change="(files) => (task.attachments = files)"
+              />
             </section>
 
             <!-- time logs -->
@@ -287,6 +339,36 @@
                   <span class="ml-auto shrink-0 text-xs text-ink-gray-5">
                     {{ log.logged_by }} · {{ formatDate(log.from_time) }}
                   </span>
+                </li>
+              </ul>
+            </section>
+
+            <!-- change log, read from the Version records Frappe writes -->
+            <section v-if="task.history?.length">
+              <h3 class="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-gray-5">
+                History
+              </h3>
+              <ul class="flex flex-col gap-2">
+                <li
+                  v-for="entry in task.history"
+                  :key="entry.name"
+                  class="flex gap-2 text-xs"
+                >
+                  <UserAvatar
+                    :user="{ full_name: entry.full_name, user_image: entry.user_image }"
+                    size="sm"
+                  />
+                  <p class="min-w-0 flex-1 text-ink-gray-6">
+                    <span class="font-medium text-ink-gray-8">{{ entry.full_name }}</span>
+                    <span v-for="(change, i) in entry.changes" :key="i">
+                      changed {{ change.field }} from
+                      <span class="text-ink-gray-8">{{ change.from || '—' }}</span>
+                      to
+                      <span class="text-ink-gray-8">{{ change.to || '—' }}</span>
+                      <span v-if="i < entry.changes.length - 1">, </span>
+                    </span>
+                    <span class="text-ink-gray-4"> · {{ timeAgo(entry.creation) }}</span>
+                  </p>
                 </li>
               </ul>
             </section>
@@ -375,21 +457,27 @@ import {
   DatePicker,
   Dropdown,
   LoadingIndicator,
-  Select,
   TextEditor,
   toast,
 } from 'frappe-ui'
 import AssigneeSelect from './AssigneeSelect.vue'
 import AvatarStack from './AvatarStack.vue'
 import CreateTaskDialog from './CreateTaskDialog.vue'
+import DependencyPicker from './DependencyPicker.vue'
 import ErrorState from './ErrorState.vue'
 import LogTimeDialog from './LogTimeDialog.vue'
+import NullableSelect from './NullableSelect.vue'
+import TagInput from './TagInput.vue'
+import TaskAttachments from './TaskAttachments.vue'
+import TaskTimer from './TaskTimer.vue'
 import PriorityIcon from './PriorityIcon.vue'
+import ProgressSlider from './ProgressSlider.vue'
 import StatusPill from './StatusPill.vue'
 import UserAvatar from './UserAvatar.vue'
 import api from '@/data/api'
 import { removeTask, upsertTask } from '@/data/board'
 import { permissions, taskTypes, user } from '@/data/session'
+import { isNarrow } from '@/data/ui'
 import { statusStyle } from '@/utils/constants'
 import { formatDate, formatNumber, isOverdue, plainText, timeAgo } from '@/utils/format'
 import { closeTask, openTask } from '@/utils/taskPanel'
@@ -402,6 +490,7 @@ const loadError = ref(null)
 const showLogTime = ref(false)
 const showSubtask = ref(false)
 
+const subjectBox = ref(null)
 const draftSubject = ref('')
 const draftDescription = ref('')
 const draftWeight = ref(0)
@@ -413,6 +502,14 @@ const postingComment = ref(false)
 const taskName = computed(() => route.query.task || null)
 const currentUser = computed(() => user.value?.name)
 const assigneeEmails = computed(() => (task.value?.assignees || []).map((u) => u.name))
+/** ERPNext forces progress to 100 on a completed task, so do not fight it. */
+const progressLocked = computed(() => task.value?.status === 'Completed')
+
+const subtaskPercent = computed(() => {
+  const p = task.value?.subtask_progress
+  return p?.total ? Math.round((p.done / p.total) * 100) : 0
+})
+
 const overdue = computed(() =>
   task.value ? isOverdue(task.value.exp_end_date, task.value.status) : false,
 )
@@ -424,6 +521,15 @@ const typeOptions = computed(() => [
 ])
 
 const menuOptions = computed(() => [
+  ...(permissions.value.canSubmitTimesheet
+    ? [
+        {
+          label: 'Log time manually…',
+          icon: 'clock',
+          onClick: () => (showLogTime.value = true),
+        },
+      ]
+    : []),
   {
     label: 'Open in Desk',
     icon: 'external-link',
@@ -459,6 +565,16 @@ function syncDrafts() {
   draftDescription.value = task.value?.description || ''
   draftWeight.value = task.value?.task_weight || 0
   draftProgress.value = Math.round(task.value?.progress || 0)
+  // The subject box only auto-grows on input, so size it for the loaded value
+  // too - otherwise a subject that wraps gets clipped to one line.
+  nextTick(resizeSubject)
+}
+
+function resizeSubject() {
+  const el = subjectBox.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
 }
 
 async function load(name) {
@@ -501,6 +617,30 @@ function saveSubject() {
   save({ subject: value })
 }
 
+async function saveTags(tags) {
+  if (!task.value?.can_write) return
+  const previous = task.value.tags || []
+  task.value.tags = tags
+  try {
+    const saved = await api.setTaskTags(task.value.name, tags)
+    task.value.tags = saved
+    upsertTask({ name: task.value.name, tags: saved })
+  } catch (e) {
+    task.value.tags = previous
+    toast.error(e?.messages?.join(', ') || e?.message || 'Could not update labels')
+  }
+}
+
+async function saveDependencies(names) {
+  if (!task.value?.can_write) return
+  try {
+    await api.setDependencies(task.value.name, names)
+    await reload()
+  } catch (e) {
+    toast.error(e?.messages?.join(', ') || e?.message || 'Could not update dependencies')
+  }
+}
+
 function saveWeight() {
   const value = Number(draftWeight.value) || 0
   if (value === (task.value.task_weight || 0)) return
@@ -516,6 +656,9 @@ function autoGrow(event) {
   event.target.style.height = 'auto'
   event.target.style.height = `${event.target.scrollHeight}px`
 }
+
+// A viewport change rewraps the subject, so re-measure.
+watch(isNarrow, () => nextTick(resizeSubject))
 
 async function postComment() {
   if (!hasCommentText.value) return

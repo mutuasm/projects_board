@@ -1,79 +1,93 @@
 <template>
   <div
-    class="group cursor-pointer rounded-lg border border-outline-gray-2 bg-surface-white p-2.5 shadow-sm transition-shadow hover:border-outline-gray-3 hover:shadow"
+    class="pb-card group cursor-pointer p-2.5"
+    :class="selected ? '!border-outline-gray-4' : ''"
     @click="openTask(task.name)"
   >
-    <!-- colour stripe uses the native Task.color field -->
-    <div
-      v-if="task.color"
-      class="mb-2 h-1 w-8 rounded-full"
-      :style="{ backgroundColor: task.color }"
-    />
+    <!-- epic chip: a colour swatch plus the parent's name, Jira style -->
+    <button
+      v-if="task.epic"
+      class="mb-1.5 flex max-w-full items-center gap-1.5 text-[11px] font-medium text-ink-gray-6 hover:text-ink-gray-8"
+      @click.stop="$emit('filter-epic', task.epic.name)"
+    >
+      <span
+        class="size-2 shrink-0 rounded-[3px]"
+        :style="{ backgroundColor: task.epic.color || '#9ca3af' }"
+      />
+      <span class="truncate">{{ task.epic.subject }}</span>
+    </button>
 
     <div class="flex items-start gap-2">
       <LucideFlag
         v-if="task.is_milestone"
         class="mt-0.5 size-3.5 shrink-0 text-ink-amber-3"
       />
-      <p class="flex-1 text-sm leading-snug text-ink-gray-8">
-        {{ task.subject }}
-      </p>
+      <p class="flex-1 text-sm leading-snug text-ink-gray-8">{{ task.subject }}</p>
+      <Tooltip v-if="isTiming" text="Timer running on this task">
+        <span class="relative mt-1 flex size-2 shrink-0">
+          <span
+            class="absolute inline-flex size-full animate-ping rounded-full bg-red-400 opacity-75"
+          />
+          <span class="relative inline-flex size-2 rounded-full bg-red-500" />
+        </span>
+      </Tooltip>
     </div>
 
-    <p
-      v-if="preview"
-      class="mt-1 line-clamp-2 text-xs leading-relaxed text-ink-gray-5"
-    >
-      {{ preview }}
+    <!-- labels stay as plain text, not another row of pills -->
+    <p v-if="task.tags?.length" class="mt-1.5 truncate text-[11px] text-ink-gray-5">
+      {{ task.tags.join(' · ') }}
     </p>
 
-    <!-- meta chips -->
-    <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
-      <Badge v-if="task.type" theme="gray" variant="subtle" size="sm">
-        {{ task.type }}
-      </Badge>
-      <Badge
-        v-if="task.task_weight"
-        theme="gray"
-        variant="subtle"
-        size="sm"
-        :title="'Weight (story points)'"
-      >
-        {{ formatNumber(task.task_weight) }}
-      </Badge>
+    <!-- one quiet meta line instead of a wall of badges -->
+    <div class="mt-2.5 flex items-center gap-2">
+      <Tooltip :text="`Type: ${task.type || 'none'}`">
+        <span
+          class="shrink-0 text-[11px] font-medium uppercase tracking-wide"
+          :class="typeStyle.text"
+        >
+          {{ typeStyle.short }}
+        </span>
+      </Tooltip>
+
+      <PriorityIcon :priority="task.priority" />
+
+      <Tooltip v-if="task.is_blocked" :text="blockedLabel">
+        <LucideLock class="size-3.5 shrink-0 text-ink-amber-3" />
+      </Tooltip>
+
       <span
         v-if="task.exp_end_date"
-        class="inline-flex items-center gap-1 rounded px-1 py-0.5 text-xs"
-        :class="
-          overdue
-            ? 'bg-surface-red-2 text-ink-red-3'
-            : 'text-ink-gray-5'
-        "
+        class="shrink-0 text-xs"
+        :class="overdue ? 'font-medium text-ink-red-3' : 'text-ink-gray-5'"
       >
-        <LucideCalendar class="size-3" />
         {{ dueLabel(task.exp_end_date) }}
       </span>
+
       <span
         v-if="task.comment_count"
-        class="inline-flex items-center gap-0.5 text-xs text-ink-gray-5"
+        class="inline-flex shrink-0 items-center gap-0.5 text-xs text-ink-gray-5"
       >
         <LucideMessageSquare class="size-3" />
         {{ task.comment_count }}
       </span>
-    </div>
 
-    <div class="mt-2.5 flex items-center justify-between">
-      <div class="flex items-center gap-1.5">
-        <PriorityIcon :priority="task.priority" />
-        <span class="font-mono text-xs text-ink-gray-4">{{ task.name }}</span>
-      </div>
-      <AvatarStack :users="task.assignees || []" :max="3" size="xs" />
+      <span
+        v-if="task.task_weight"
+        class="shrink-0 rounded bg-surface-gray-2 px-1 text-[11px] tabular-nums text-ink-gray-6"
+        :title="`Weight ${task.task_weight}`"
+      >
+        {{ formatNumber(task.task_weight) }}
+      </span>
+
+      <span class="ml-auto shrink-0">
+        <AvatarStack :users="task.assignees || []" :max="2" size="xs" />
+      </span>
     </div>
 
     <!-- progress on partially-done work -->
     <div
       v-if="task.progress > 0 && task.progress < 100"
-      class="mt-2 h-1 w-full overflow-hidden rounded-full bg-surface-gray-2"
+      class="mt-2 h-0.5 w-full overflow-hidden rounded-full bg-surface-gray-2"
     >
       <div
         class="h-full rounded-full bg-surface-blue-3"
@@ -85,18 +99,22 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Badge } from 'frappe-ui'
+import { Tooltip } from 'frappe-ui'
 import AvatarStack from './AvatarStack.vue'
 import PriorityIcon from './PriorityIcon.vue'
-import { dueLabel, formatNumber, isOverdue, plainText } from '@/utils/format'
+import { taskTypeStyle } from '@/utils/constants'
+import { dueLabel, formatNumber, isOverdue } from '@/utils/format'
 import { openTask } from '@/utils/taskPanel'
+import { isTimingTask } from '@/data/timer'
 
 const props = defineProps({
   task: { type: Object, required: true },
+  selected: { type: Boolean, default: false },
 })
+defineEmits(['filter-epic'])
 
-const preview = computed(() => plainText(props.task.description, 90))
-const overdue = computed(() =>
-  isOverdue(props.task.exp_end_date, props.task.status),
-)
+const overdue = computed(() => isOverdue(props.task.exp_end_date, props.task.status))
+const isTiming = computed(() => isTimingTask(props.task.name))
+const typeStyle = computed(() => taskTypeStyle(props.task.type))
+const blockedLabel = computed(() => `Waiting on ${(props.task.blocked_by || []).join(', ')}`)
 </script>

@@ -50,3 +50,26 @@ export function sortByPriority(a, b) {
   const bi = PRIORITY_ORDER.indexOf(b.priority)
   return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
 }
+
+
+/**
+ * Task Type is a free-form ERPNext doctype, so this only styles the types a
+ * site is likely to have and falls back to the first three letters otherwise.
+ */
+const TASK_TYPE_STYLES = {
+  Bug: { short: 'BUG', text: 'text-ink-red-3' },
+  Story: { short: 'STORY', text: 'text-ink-green-3' },
+  Epic: { short: 'EPIC', text: 'text-ink-blue-3' },
+  Task: { short: 'TASK', text: 'text-ink-gray-5' },
+  'Sub-task': { short: 'SUB', text: 'text-ink-gray-5' },
+}
+
+export function taskTypeStyle(type) {
+  if (!type) return { short: '—', text: 'text-ink-gray-4' }
+  return (
+    TASK_TYPE_STYLES[type] || {
+      short: type.slice(0, 4).toUpperCase(),
+      text: 'text-ink-gray-5',
+    }
+  )
+}

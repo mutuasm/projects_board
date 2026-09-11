@@ -1,5 +1,5 @@
 <template>
-  <Dropdown v-if="editable" :options="priorityOptions" placement="left">
+  <Dropdown v-if="editable" :options="priorityOptions" placement="bottom-start">
     <button
       class="inline-flex items-center gap-1 rounded px-1.5 py-1 text-xs font-medium hover:bg-surface-gray-2"
       :class="style.text"
