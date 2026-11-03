@@ -14,6 +14,14 @@
           @keydown.enter="submit"
         />
 
+        <!-- opened outside a project (e.g. from My Work): let the user pick one -->
+        <NullableSelect
+          v-if="!project"
+          v-model="form.project"
+          label="Project"
+          :options="projectOptions"
+        />
+
         <div>
           <label class="mb-1.5 block text-xs text-ink-gray-5">Description</label>
           <TextEditor
@@ -62,7 +70,7 @@
         </div>
 
         <NullableSelect
-          v-if="groupTaskOptions.length > 1"
+          v-if="project && groupTaskOptions.length > 1"
           v-model="form.parent_task"
           label="Epic"
           :options="groupTaskOptions"
@@ -103,6 +111,7 @@ import AssigneeSelect from './AssigneeSelect.vue'
 import NullableSelect from './NullableSelect.vue'
 import api from '@/data/api'
 import { tasks } from '@/data/board'
+import { projects } from '@/data/projects'
 import { boardStatuses, taskPriorities, taskTypes, user } from '@/data/session'
 import { statusStyle } from '@/utils/constants'
 
@@ -135,6 +144,7 @@ function blankForm() {
     exp_start_date: '',
     exp_end_date: '',
     assignees: [],
+    project: '',
     parent_task: props.defaultParent || '',
     is_milestone: false,
     color: '#3b82f6',
@@ -156,11 +166,21 @@ const typeOptions = computed(() => [
   ...taskTypes.value.map((t) => ({ label: t, value: t })),
 ])
 
-/** Only group tasks can be a parent - ERPNext enforces this on save. */
+const projectOptions = computed(() => [
+  { label: 'No project', value: '' },
+  ...projects.value
+    .filter((p) => ['Open', 'On hold'].includes(p.status))
+    .map((p) => ({ label: p.project_name, value: p.name })),
+])
+
+/**
+ * Only group tasks can be a parent - ERPNext enforces this on save. The board
+ * store holds the last project visited, so make sure the epics are this one's.
+ */
 const groupTaskOptions = computed(() => [
   { label: 'No epic', value: '' },
   ...tasks.value
-    .filter((t) => t.is_group)
+    .filter((t) => t.is_group && t.project === props.project)
     .map((t) => ({ label: t.subject, value: t.name })),
 ])
 
@@ -186,7 +206,7 @@ async function submit() {
   try {
     const payload = {
       ...form.value,
-      project: props.project,
+      project: props.project || form.value.project || null,
       is_milestone: form.value.is_milestone ? 1 : 0,
       is_group: form.value.is_group ? 1 : 0,
       // only epics carry a colour; it is what tints their chip on every card

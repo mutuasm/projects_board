@@ -1,7 +1,7 @@
 <template>
   <div
     class="pb-card group cursor-pointer p-2.5"
-    :class="selected ? '!border-outline-gray-4' : ''"
+    :class="selected ? 'pb-card-selected' : ''"
     @click="openTask(task.name)"
   >
     <!-- epic chip: a colour swatch plus the parent's name, Jira style -->
@@ -50,6 +50,19 @@
       </Tooltip>
 
       <PriorityIcon :priority="task.priority" />
+
+      <Tooltip
+        v-if="task.status === 'Pending Review' && task.review_date"
+        :text="`Review by ${formatDate(task.review_date)}`"
+      >
+        <span
+          class="inline-flex shrink-0 items-center gap-0.5 text-xs"
+          :class="reviewLate ? 'font-medium text-ink-red-3' : 'text-ink-amber-3'"
+        >
+          <LucideClipboardCheck class="size-3" />
+          {{ dueLabel(task.review_date) }}
+        </span>
+      </Tooltip>
 
       <Tooltip v-if="task.is_blocked" :text="blockedLabel">
         <LucideLock class="size-3.5 shrink-0 text-ink-amber-3" />
@@ -103,7 +116,7 @@ import { Tooltip } from 'frappe-ui'
 import AvatarStack from './AvatarStack.vue'
 import PriorityIcon from './PriorityIcon.vue'
 import { taskTypeStyle } from '@/utils/constants'
-import { dueLabel, formatNumber, isOverdue } from '@/utils/format'
+import { dayjs, dueLabel, formatDate, formatNumber, isOverdue } from '@/utils/format'
 import { openTask } from '@/utils/taskPanel'
 import { isTimingTask } from '@/data/timer'
 
@@ -116,5 +129,8 @@ defineEmits(['filter-epic'])
 const overdue = computed(() => isOverdue(props.task.exp_end_date, props.task.status))
 const isTiming = computed(() => isTimingTask(props.task.name))
 const typeStyle = computed(() => taskTypeStyle(props.task.type))
+const reviewLate = computed(
+  () => props.task.review_date && dayjs(props.task.review_date).isBefore(dayjs().startOf('day')),
+)
 const blockedLabel = computed(() => `Waiting on ${(props.task.blocked_by || []).join(', ')}`)
 </script>

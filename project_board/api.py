@@ -14,7 +14,7 @@ from frappe import _
 from frappe.desk.form.assign_to import add as assign_to_add
 from frappe.desk.form.assign_to import remove as assign_to_remove
 from frappe.query_builder.functions import Count
-from frappe.utils import cint, flt, get_datetime, getdate, now_datetime, nowtime, today
+from frappe.utils import add_days, cint, flt, get_datetime, getdate, now_datetime, nowtime, today
 
 # Fields the board is allowed to write on a Task. Anything else has to go
 # through the desk form, which keeps this endpoint from becoming a generic
@@ -79,6 +79,8 @@ TASK_LIST_FIELDS = [
 	"progress",
 	"completed_by",
 	"completed_on",
+	"review_date",
+	"closing_date",
 	"department",
 	"_assign",
 	"_user_tags",
@@ -88,6 +90,26 @@ TASK_LIST_FIELDS = [
 	"owner",
 	"idx",
 ]
+
+CLOSED_PROJECT_STATUSES = ("Completed", "Cancelled")
+
+# ERPNext's "progress collection" settings on Project. Written only through
+# save_checkin_settings(), which validates them, never the generic update.
+CHECKIN_FIELDS = (
+	"collect_progress",
+	"frequency",
+	"daily_time_to_send",
+	"first_email",
+	"second_email",
+	"day_to_send",
+	"weekly_time_to_send",
+	"subject",
+	"message",
+)
+# ERPNext also offers "Hourly", but its hourly_reminder() checks
+# `now >= from_time or now <= to_time`, which is always true - it would email
+# the team every hour around the clock. So the board does not offer it.
+CHECKIN_FREQUENCIES = ("Daily", "Twice Daily", "Weekly")
 
 # "Template" only exists to support Project Templates; it is not a workflow
 # state a human ever drags a card into.
@@ -449,6 +471,7 @@ def get_project(name: str):
 			for u in doc.users
 		],
 		"task_counts": _task_counts_by_project([name]).get(name, {}),
+		"can_write": bool(frappe.has_permission("Project", ptype="write", doc=name)),
 	}
 
 
@@ -502,6 +525,53 @@ def set_project_members(project: str, users):
 	doc.save()
 
 	return [{"name": u.user, "full_name": u.full_name or u.user, "user_image": u.image} for u in doc.users]
+
+
+@frappe.whitelist()
+def close_project(name: str, status: str = "Completed", note: str | None = None, cancel_open_tasks: int = 0):
+	"""Close a project as Completed or Cancelled.
+
+	Optionally cancels the tasks still open in it and posts the closing note as
+	a Project Update. All of it happens in one request, so a task that refuses
+	to cancel leaves the project untouched.
+	"""
+	frappe.has_permission("Project", ptype="write", doc=name, throw=True)
+
+	if status not in CLOSED_PROJECT_STATUSES:
+		frappe.throw(_("A project can only be closed as {0}").format(" or ".join(CLOSED_PROJECT_STATUSES)))
+
+	if cint(cancel_open_tasks):
+		open_tasks = frappe.get_all(
+			"Task",
+			filters={"project": name, "status": ("not in", ["Completed", "Cancelled", "Template"])},
+			pluck="name",
+		)
+		for task in open_tasks:
+			doc = frappe.get_doc("Task", task)
+			doc.check_permission("write")
+			doc.status = "Cancelled"
+			doc.save()
+
+	# Loaded after the tasks: each task save rolls its progress up into the project.
+	doc = frappe.get_doc("Project", name)
+	doc.status = status
+	doc.save()
+
+	# Unless the method is Manual, ERPNext recomputes the status from task
+	# progress on save and only keeps Completed at 100%. Refuse rather than
+	# report a close that did not stick.
+	if doc.status != status:
+		frappe.throw(
+			_(
+				"ERPNext sets this project's status from its tasks ({0}), which are {1}% done. "
+				"Close the remaining tasks first, or close the project as Cancelled."
+			).format(_(doc.percent_complete_method), flt(doc.percent_complete, 1))
+		)
+
+	if (note or "").strip():
+		add_project_update(name, note)
+
+	return doc.as_dict()
 
 
 # ---------------------------------------------------------------------------
@@ -594,15 +664,48 @@ def get_tasks(
 
 
 @frappe.whitelist()
-def get_my_tasks(include_completed: int = 0):
-	"""Tasks assigned to the logged-in user, across every project they can see."""
+def get_my_tasks(include_completed: int = 0, completed_days: int = 0):
+	"""Every task the logged-in user is assigned to, across the projects they can see.
+
+	`_assign` only lists *open* assignments, and ERPNext closes an assignment when
+	its task is completed or the assignee marks their part done - so reading it
+	alone drops tasks you were on. The ToDo table is the record of every
+	assignment, so both are read. A cancelled ToDo is an un-assignment and does
+	not count.
+
+	`completed_days` keeps finished tasks from that recent window even when
+	`include_completed` is off, for the page's "recently completed" list.
+	"""
+	user = frappe.session.user
+	todos = frappe.get_all(
+		"ToDo",
+		filters={"allocated_to": user, "reference_type": "Task", "status": ("!=", "Cancelled")},
+		fields=["reference_name", "status"],
+	)
+	open_assignments = {t.reference_name for t in todos if t.status == "Open"}
+	# the JSON quotes make this an exact match, not a substring of another email
+	open_assignments |= set(
+		frappe.get_all("Task", filters=[["_assign", "like", f'%"{user}"%']], pluck="name")
+	)
+	names = open_assignments | {t.reference_name for t in todos}
+	if not names:
+		return []
+
+	filters = [["name", "in", list(names)], ["is_template", "=", 0]]
+	or_filters = None
+	if not cint(include_completed):
+		if cint(completed_days):
+			or_filters = [
+				["status", "not in", ["Completed", "Cancelled"]],
+				["modified", ">=", add_days(now_datetime(), -cint(completed_days))],
+			]
+		else:
+			filters.append(["status", "not in", ["Completed", "Cancelled"]])
+
 	tasks = frappe.get_list(
 		"Task",
-		filters=[
-			["is_template", "=", 0],
-			["_assign", "like", f"%{frappe.session.user}%"],
-		]
-		+ ([] if cint(include_completed) else [["status", "not in", ["Completed", "Cancelled"]]]),
+		filters=filters,
+		or_filters=or_filters,
 		fields=TASK_LIST_FIELDS,
 		order_by="exp_end_date asc, priority desc, modified desc",
 		limit_page_length=0,
@@ -610,6 +713,9 @@ def get_my_tasks(include_completed: int = 0):
 
 	tasks = _attach_epics(_attach_blocked_state(_attach_comment_counts(_attach_assignees(tasks))))
 	_attach_project_titles(tasks)
+	for task in tasks:
+		# "done" = you finished your part (or the task closed your assignment)
+		task["my_assignment"] = "open" if task.name in open_assignments else "done"
 	return tasks
 
 
@@ -684,6 +790,7 @@ def get_task(name: str):
 	]
 	data["can_write"] = frappe.has_permission("Task", ptype="write", doc=name)
 	data["can_delete"] = frappe.has_permission("Task", ptype="delete", doc=name)
+	data["created_by"] = _user_map({doc.owner}).get(doc.owner) or {"name": doc.owner, "full_name": doc.owner}
 
 	return data
 
@@ -749,12 +856,26 @@ def update_task(name: str, values):
 	if values:
 		doc = frappe.get_doc("Task", name)
 		doc.update(values)
+		_stamp_completion(doc)
 		doc.save()
 
 	if assignees is not None:
 		set_assignees(name, assignees)
 
 	return get_task(name)
+
+
+def _stamp_completion(doc):
+	"""Fill the "who/when" fields ERPNext leaves blank when a task is completed.
+
+	`closing_date` is the date the desk shows on a completed task; ERPNext
+	never sets it itself.
+	"""
+	if doc.status != "Completed" or doc.get_db_value("status") == "Completed":
+		return
+	doc.completed_by = doc.completed_by or frappe.session.user
+	doc.completed_on = doc.completed_on or today()
+	doc.closing_date = doc.closing_date or today()
 
 
 @frappe.whitelist()
@@ -770,9 +891,7 @@ def move_task(name: str, status: str):
 		return _move_task_response(name)
 
 	doc.status = status
-	if status == "Completed":
-		doc.completed_by = doc.completed_by or frappe.session.user
-		doc.completed_on = doc.completed_on or today()
+	_stamp_completion(doc)
 	doc.save()
 
 	return _move_task_response(name)
@@ -1282,17 +1401,25 @@ def get_project_updates(project: str, limit: int = 20):
 	for row in frappe.get_all(
 		"Project User",
 		filters={"parent": ("in", [u.name for u in updates]), "parenttype": "Project Update"},
-		fields=["parent", "user", "project_status"],
+		fields=["parent", "user", "project_status", "idx"],
+		order_by="idx asc",
 		ignore_permissions=True,
 	):
 		notes.setdefault(row.parent, []).append(row)
 
-	users = _user_map({u.owner for u in updates})
+	users = _user_map({u.owner for u in updates} | {n.user for rows in notes.values() for n in rows})
 	for update in updates:
 		info = users.get(update.owner) or {}
 		update["full_name"] = info.get("full_name") or update.owner
 		update["user_image"] = info.get("user_image")
+		# ERPNext's scheduled check-ins use their own naming series; each email
+		# reply is appended to that update as one more row.
+		update["is_checkin"] = update.name.startswith("UPDATE-")
 		update["notes"] = notes.get(update.name, [])
+		for note in update["notes"]:
+			author = users.get(note.user) or {}
+			note["full_name"] = author.get("full_name") or note.user
+			note["user_image"] = author.get("user_image")
 		update["status_text"] = "\n\n".join(
 			n.project_status for n in update["notes"] if n.project_status
 		)
@@ -1320,6 +1447,228 @@ def add_project_update(project: str, status: str):
 	doc.insert()
 
 	return get_project_updates(project, limit=1)[0]
+
+
+def _checkin_readiness(doc) -> dict:
+	"""What ERPNext needs before a scheduled check-in can go out and come back."""
+	from frappe.utils.scheduler import is_scheduler_disabled
+
+	recipients = [
+		{"name": u.user, "full_name": u.full_name or u.user, "email": u.email}
+		for u in doc.users
+		if u.email and frappe.db.get_value("User", u.user, "enabled")
+	]
+	return {
+		"outgoing": _outgoing_email_configured(),
+		# replies are threaded back through the default incoming account
+		"incoming": bool(
+			frappe.db.get_value("Email Account", {"enable_incoming": 1, "default_incoming": 1})
+		),
+		"scheduler": not is_scheduler_disabled(verbose=False),
+		"recipients": recipients,
+	}
+
+
+@frappe.whitelist()
+def get_checkin_settings(project: str):
+	"""ERPNext's progress-collection settings for a project, plus a readiness check."""
+	frappe.has_permission("Project", ptype="read", doc=project, throw=True)
+	doc = frappe.get_doc("Project", project)
+
+	settings = {field: doc.get(field) for field in CHECKIN_FIELDS}
+	for field in ("daily_time_to_send", "first_email", "second_email", "weekly_time_to_send"):
+		if settings[field]:
+			settings[field] = str(settings[field])[:5]  # HH:MM for <input type="time">
+
+	return {
+		"settings": settings,
+		"frequencies": list(CHECKIN_FREQUENCIES),
+		"readiness": _checkin_readiness(doc),
+		"holiday_list": doc.holiday_list,
+		"can_edit": bool(frappe.has_permission("Project", ptype="write", doc=project)),
+	}
+
+
+@frappe.whitelist()
+def save_checkin_settings(project: str, values):
+	frappe.has_permission("Project", ptype="write", doc=project, throw=True)
+	if isinstance(values, str):
+		values = json.loads(values)
+
+	unknown = set(values) - set(CHECKIN_FIELDS)
+	if unknown:
+		frappe.throw(_("Not a check-in setting: {0}").format(", ".join(sorted(unknown))))
+
+	doc = frappe.get_doc("Project", project)
+	doc.update(values)
+
+	if cint(doc.collect_progress):
+		if doc.frequency not in CHECKIN_FREQUENCIES:
+			frappe.throw(_("Pick how often to send the check-in"))
+		required = {
+			"Daily": ["daily_time_to_send"],
+			"Twice Daily": ["first_email", "second_email"],
+			"Weekly": ["day_to_send", "weekly_time_to_send"],
+		}[doc.frequency]
+		if any(not doc.get(field) for field in required):
+			frappe.throw(_("Set when the check-in should go out"))
+		if not (doc.subject or "").strip() or not (doc.message or "").strip():
+			frappe.throw(_("Write the email subject and message"))
+
+		# Without these, ERPNext would still create an empty update every day.
+		readiness = _checkin_readiness(doc)
+		if not readiness["outgoing"]:
+			frappe.throw(_("Set up an outgoing email account before turning check-ins on"))
+		if not readiness["recipients"]:
+			frappe.throw(_("Add team members to the project - they are who the check-in goes to"))
+
+	doc.save()
+	return get_checkin_settings(project)
+
+
+@frappe.whitelist()
+def send_checkin_now(project: str):
+	"""Send the check-in email right away, the same way the scheduler does."""
+	from erpnext.projects.doctype.project.project import send_project_update_email_to_users
+	from erpnext.setup.doctype.holiday_list.holiday_list import is_holiday
+
+	frappe.has_permission("Project", ptype="write", doc=project, throw=True)
+	doc = frappe.get_doc("Project", project)
+
+	readiness = _checkin_readiness(doc)
+	if not readiness["outgoing"]:
+		frappe.throw(_("Set up an outgoing email account first"))
+	if not readiness["recipients"]:
+		frappe.throw(_("The project has no team members to email"))
+	if not (doc.subject or "").strip() or not (doc.message or "").strip():
+		frappe.throw(_("Save a subject and message first"))
+	if doc.holiday_list and is_holiday(doc.holiday_list):
+		frappe.throw(_("Today is a holiday in {0}, so ERPNext will not send it").format(doc.holiday_list))
+
+	send_project_update_email_to_users(project)
+	return {"recipients": len(readiness["recipients"])}
+
+
+# ---------------------------------------------------------------------------
+# reviews (Task.review_date, Pending Review)
+# ---------------------------------------------------------------------------
+
+
+@frappe.whitelist()
+def get_review_queue():
+	"""Tasks in review that are waiting on the current user.
+
+	ERPNext has no reviewer field. The person who handed the work out - the
+	`assigned_by` on its assignment, or the task's creator - is the one who
+	signs it off, so those are the reviews that land here. Your own work in
+	review is not your review to do.
+	"""
+	user = frappe.session.user
+	assigned_by_me = set(
+		frappe.get_all(
+			"ToDo",
+			filters={"assigned_by": user, "reference_type": "Task", "status": ("!=", "Cancelled")},
+			pluck="reference_name",
+		)
+	)
+	candidates = frappe.get_list(
+		"Task",
+		filters=[["status", "=", "Pending Review"], ["is_template", "=", 0]],
+		or_filters=[["name", "in", list(assigned_by_me) or [""]], ["owner", "=", user]],
+		fields=TASK_LIST_FIELDS,
+		order_by="review_date asc, exp_end_date asc",
+		limit_page_length=0,
+	)
+	rows = [
+		t
+		for t in _attach_assignees(candidates)
+		if user not in {a["name"] for a in t.get("assignees") or []}
+	]
+	rows = _attach_epics(_attach_comment_counts(rows))
+	_attach_project_titles(rows)
+	return rows
+
+
+# ---------------------------------------------------------------------------
+# live updates
+# ---------------------------------------------------------------------------
+
+
+@frappe.whitelist()
+def get_task_rows(names):
+	"""Fresh board rows for tasks a realtime event says have changed.
+
+	Names that come back missing were deleted, or are no longer visible to the
+	user, and should drop off the board.
+	"""
+	if isinstance(names, str):
+		names = json.loads(names)
+	names = [n for n in (names or [])[:200] if n]
+	if not names:
+		return []
+
+	rows = frappe.get_list("Task", filters={"name": ("in", names)}, fields=TASK_LIST_FIELDS)
+	return _attach_epics(_attach_blocked_state(_attach_comment_counts(_attach_assignees(rows))))
+
+
+# ---------------------------------------------------------------------------
+# notifications (native Notification Log)
+# ---------------------------------------------------------------------------
+
+
+@frappe.whitelist()
+def get_notifications(limit: int = 30):
+	"""The current user's inbox, newest first, with enough context to route a click."""
+	user = frappe.session.user
+	logs = frappe.get_all(
+		"Notification Log",
+		filters={"for_user": user},
+		fields=[
+			"name",
+			"subject",
+			"type",
+			"document_type",
+			"document_name",
+			"from_user",
+			"email_content",
+			"read",
+			"creation",
+		],
+		order_by="creation desc",
+		limit_page_length=min(cint(limit) or 30, 100),
+	)
+
+	senders = _user_map({log.from_user for log in logs})
+	task_projects = dict(
+		frappe.get_all(
+			"Task",
+			filters={"name": ("in", [log.document_name for log in logs if log.document_type == "Task"] or [""])},
+			fields=["name", "project"],
+			as_list=True,
+		)
+	)
+	for log in logs:
+		info = senders.get(log.from_user) or {}
+		log["from_full_name"] = info.get("full_name") or log.from_user
+		log["from_user_image"] = info.get("user_image")
+		if log.document_type == "Task":
+			log["project"] = task_projects.get(log.document_name)
+
+	unread = frappe.db.count("Notification Log", {"for_user": user, "read": 0})
+	return {"items": logs, "unread": unread}
+
+
+@frappe.whitelist()
+def mark_notifications_read(names=None):
+	"""Mark some (or, with no names, all) of the current user's notifications read."""
+	if isinstance(names, str):
+		names = json.loads(names)
+
+	filters = {"for_user": frappe.session.user, "read": 0}
+	if names:
+		filters["name"] = ("in", names)
+	frappe.db.set_value("Notification Log", filters, "read", 1, update_modified=False)
+	return frappe.db.count("Notification Log", {"for_user": frappe.session.user, "read": 0})
 
 
 # ---------------------------------------------------------------------------
@@ -1400,6 +1749,7 @@ def bulk_update_tasks(names, values):
 			if values:
 				doc = frappe.get_doc("Task", name)
 				doc.update(values)
+				_stamp_completion(doc)
 				doc.save()
 			if assignees is not None:
 				set_assignees(name, assignees)

@@ -187,6 +187,37 @@
           </dl>
         </section>
 
+        <section v-if="inReview.length" class="pb-panel p-4">
+          <h2 class="flex items-center gap-2 text-sm font-semibold text-ink-gray-8">
+            <LucideClipboardCheck class="size-4 text-ink-amber-3" />
+            In review
+            <span class="text-xs font-normal tabular-nums text-ink-gray-5">{{ inReview.length }}</span>
+          </h2>
+          <ul class="mt-3 flex flex-col divide-y divide-outline-gray-1">
+            <li
+              v-for="task in inReview"
+              :key="task.name"
+              class="flex cursor-pointer items-center gap-2 py-2 text-sm hover:bg-surface-gray-1"
+              @click="openTask(task.name)"
+            >
+              <span class="min-w-0 flex-1 truncate text-ink-gray-8">{{ task.subject }}</span>
+              <AvatarStack :users="task.assignees || []" :max="2" size="xs" />
+              <span
+                class="w-24 shrink-0 text-right text-xs"
+                :class="
+                  !task.review_date
+                    ? 'text-ink-amber-3'
+                    : isPast(task.review_date)
+                      ? 'font-medium text-ink-red-3'
+                      : 'text-ink-gray-5'
+                "
+              >
+                {{ task.review_date ? `by ${formatDate(task.review_date)}` : 'no review date' }}
+              </span>
+            </li>
+          </ul>
+        </section>
+
         <section class="pb-panel p-4">
           <h2 class="text-sm font-semibold text-ink-gray-8">Recent activity</h2>
           <ul class="mt-3 flex flex-col gap-3">
@@ -200,19 +231,24 @@
                 size="sm"
               />
               <div class="min-w-0">
+                <!-- Vue drops whitespace between tags on separate lines, so the spaces are explicit -->
                 <p class="text-ink-gray-8">
-                  <span class="font-medium">{{ item.full_name }}</span>
-                  <span class="text-ink-gray-6">
-                    {{ verb(item.comment_type) }}
-                  </span>
+                  <span class="font-medium">{{ item.full_name }}</span>{{ ' ' }}
+                  <span class="text-ink-gray-6">{{ verb(item.comment_type) }}</span>{{ ' ' }}
                   <button
-                    class="text-ink-gray-8 underline decoration-dotted underline-offset-2"
+                    class="text-left text-ink-gray-8 underline decoration-dotted underline-offset-2 hover:text-ink-gray-9"
                     @click="openTask(item.reference_name)"
                   >
                     {{ item.task_subject }}
                   </button>
                 </p>
-                <p class="text-xs text-ink-gray-5">{{ timeAgo(item.creation) }}</p>
+                <p
+                  v-if="item.comment_type === 'Comment' && plainText(item.content)"
+                  class="mt-1 line-clamp-2 text-xs text-ink-gray-6"
+                >
+                  “{{ plainText(item.content, 160) }}”
+                </p>
+                <p class="mt-0.5 text-xs text-ink-gray-5">{{ timeAgo(item.creation) }}</p>
               </div>
             </li>
             <li v-if="!activity.length" class="text-xs text-ink-gray-5">
@@ -228,18 +264,27 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { LoadingIndicator } from 'frappe-ui'
+import AvatarStack from '@/components/AvatarStack.vue'
 import BarRow from '@/components/BarRow.vue'
 import StatTile from '@/components/StatTile.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import api from '@/data/api'
-import { projectDoc as doc } from '@/data/board'
+import { projectDoc as doc, tasks } from '@/data/board'
 import { statusStyle } from '@/utils/constants'
-import { formatCurrency, formatDate, formatNumber, timeAgo } from '@/utils/format'
+import { dayjs, formatCurrency, formatDate, formatNumber, plainText, timeAgo } from '@/utils/format'
 import { openTask } from '@/utils/taskPanel'
 
 const props = defineProps({ project: { type: String, required: true } })
 
 const stats = ref(null)
+
+/** Waiting for sign-off, oldest review date first; undated ones last. */
+const inReview = computed(() =>
+  tasks.value
+    .filter((t) => t.status === 'Pending Review')
+    .sort((a, b) => (a.review_date || '9999').localeCompare(b.review_date || '9999')),
+)
+const isPast = (date) => dayjs(date).isBefore(dayjs().startOf('day'))
 const activity = ref([])
 
 const totalTasks = computed(() =>

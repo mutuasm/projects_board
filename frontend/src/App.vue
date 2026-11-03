@@ -3,7 +3,10 @@
     <div class="flex h-full w-full overflow-hidden bg-surface-white">
       <AppSidebar />
       <main class="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <router-view />
+        <TopBar />
+        <div class="min-h-0 flex-1">
+          <router-view />
+        </div>
       </main>
       <TaskDetailPanel />
     </div>
@@ -23,9 +26,10 @@ import CommandPalette from '@/components/CommandPalette.vue'
 import RunningTimerBar from '@/components/RunningTimerBar.vue'
 import ShortcutsDialog from '@/components/ShortcutsDialog.vue'
 import TaskDetailPanel from '@/components/TaskDetailPanel.vue'
+import TopBar from '@/components/TopBar.vue'
 import { paletteOpen, useShortcuts } from '@/composables/useShortcuts'
 import { emit as broadcast, EVENTS, on } from '@/data/bus'
-import { closeTask } from '@/utils/taskPanel'
+import { closeTask, escapeTargetsPanel } from '@/utils/taskPanel'
 
 const router = useRouter()
 const route = useRoute()
@@ -51,8 +55,8 @@ useShortcuts({
   create: () => broadcast(EVENTS.CREATE_TASK),
   search: () => broadcast(EVENTS.FOCUS_SEARCH),
   help: () => (showShortcuts.value = true),
-  escape: () => {
-    if (route.query.task) closeTask()
+  escape: (event) => {
+    if (route.query.task && escapeTargetsPanel(event)) closeTask()
   },
 })
 </script>

@@ -14,7 +14,7 @@
         <div
           v-for="card in cardsPerColumn[column - 1]"
           :key="card"
-          class="flex flex-col gap-2 rounded-md border border-outline-gray-2 bg-surface-white p-2.5"
+          class="pb-panel flex flex-col gap-2 !rounded-lg p-2.5"
         >
           <Skeleton :width="card % 2 ? '90%' : '70%'" height="0.7rem" />
           <div class="flex gap-1.5">

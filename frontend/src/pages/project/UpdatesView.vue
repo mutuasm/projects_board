@@ -1,6 +1,8 @@
 <template>
   <div class="thin-scrollbar h-full overflow-y-auto px-4 pb-24 pt-4 sm:px-5 sm:pb-6">
     <div class="mx-auto flex max-w-3xl flex-col gap-5">
+      <CheckinSettings :project="project" @sent="load(project, { silent: true })" />
+
       <!-- composer -->
       <section
         v-if="permissions.canPostUpdate"
@@ -57,20 +59,54 @@
             v-if="index < updates.length - 1"
             class="absolute left-[15px] top-9 h-full w-px bg-outline-gray-2"
           />
-          <UserAvatar
-            class="relative z-10"
-            :user="{ full_name: update.full_name, user_image: update.user_image }"
-          />
-          <div class="pb-panel min-w-0 flex-1 p-3">
-            <div class="flex flex-wrap items-baseline gap-x-2">
-              <span class="text-sm font-medium text-ink-gray-8">{{ update.full_name }}</span>
-              <span class="text-xs text-ink-gray-5">{{ formatDate(update.date) }}</span>
-              <span class="text-xs text-ink-gray-4">{{ timeAgo(update.creation) }}</span>
+          <!-- a scheduled check-in: one email out, each reply appended to it -->
+          <template v-if="update.is_checkin">
+            <span
+              class="relative z-10 grid size-8 shrink-0 place-items-center rounded-full bg-surface-green-2 text-ink-green-3"
+            >
+              <LucideMailCheck class="size-4" />
+            </span>
+            <div class="pb-panel min-w-0 flex-1 p-3">
+              <div class="flex flex-wrap items-baseline gap-x-2">
+                <span class="text-sm font-medium text-ink-gray-8">Check-in</span>
+                <span class="text-xs text-ink-gray-5">{{ formatDate(update.date) }}</span>
+                <span class="text-xs text-ink-gray-4">
+                  {{ update.notes.length }} {{ update.notes.length === 1 ? 'reply' : 'replies' }}
+                </span>
+              </div>
+              <ul v-if="update.notes.length" class="mt-2 flex flex-col gap-3">
+                <li v-for="note in update.notes" :key="note.idx" class="flex gap-2.5">
+                  <UserAvatar :user="{ full_name: note.full_name, user_image: note.user_image }" />
+                  <div class="min-w-0">
+                    <p class="text-xs font-medium text-ink-gray-8">{{ note.full_name }}</p>
+                    <p class="whitespace-pre-wrap text-sm leading-relaxed text-ink-gray-7">
+                      {{ htmlToText(note.project_status) }}
+                    </p>
+                  </div>
+                </li>
+              </ul>
+              <p v-else class="mt-1.5 text-sm text-ink-gray-5">
+                Emailed to the team - replies appear here as they come in.
+              </p>
             </div>
-            <p class="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-ink-gray-7">
-              {{ update.status_text || '—' }}
-            </p>
-          </div>
+          </template>
+
+          <template v-else>
+            <UserAvatar
+              class="relative z-10"
+              :user="{ full_name: update.full_name, user_image: update.user_image }"
+            />
+            <div class="pb-panel min-w-0 flex-1 p-3">
+              <div class="flex flex-wrap items-baseline gap-x-2">
+                <span class="text-sm font-medium text-ink-gray-8">{{ update.full_name }}</span>
+                <span class="text-xs text-ink-gray-5">{{ formatDate(update.date) }}</span>
+                <span class="text-xs text-ink-gray-4">{{ timeAgo(update.creation) }}</span>
+              </div>
+              <p class="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-ink-gray-7">
+                {{ htmlToText(update.status_text) || '—' }}
+              </p>
+            </div>
+          </template>
         </li>
       </ol>
     </div>
@@ -78,14 +114,16 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { Button, ErrorMessage, FormControl, toast } from 'frappe-ui'
+import CheckinSettings from '@/components/CheckinSettings.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Skeleton from '@/components/Skeleton.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import api from '@/data/api'
 import { permissions } from '@/data/session'
-import { formatDate, timeAgo } from '@/utils/format'
+import { batched, onListUpdate } from '@/data/realtime'
+import { formatDate, htmlToText, timeAgo } from '@/utils/format'
 
 const props = defineProps({ project: { type: String, required: true } })
 
@@ -95,8 +133,8 @@ const draft = ref('')
 const posting = ref(false)
 const errorMessage = ref('')
 
-async function load(project) {
-  loading.value = true
+async function load(project, { silent = false } = {}) {
+  if (!silent) loading.value = true
   try {
     updates.value = (await api.getProjectUpdates(project)) || []
   } finally {
@@ -120,4 +158,10 @@ async function post() {
 }
 
 watch(() => props.project, load, { immediate: true })
+
+// new posts and email replies show up without a refresh
+const reloadSoon = batched(() => load(props.project, { silent: true }), 500)
+let stopLive = null
+onMounted(() => (stopLive = onListUpdate('Project Update', () => reloadSoon())))
+onUnmounted(() => stopLive?.())
 </script>

@@ -77,11 +77,16 @@
                   </button>
                 </header>
 
+                <!--
+                  overscroll-auto: the app-wide `contain` on scroll panes would
+                  trap wheel and swipe gestures inside the column, so the board
+                  would only scroll when the pointer was over a column header.
+                -->
                 <draggable
                   :list="lane.columns[status]"
                   :group="{ name: 'tasks' }"
                   item-key="name"
-                  class="thin-scrollbar flex min-h-16 flex-1 flex-col gap-2 overflow-y-auto rounded-b-md px-1 pb-3 pt-2 transition-colors"
+                  class="thin-scrollbar flex min-h-16 flex-1 flex-col gap-2 overflow-y-auto !overscroll-auto rounded-b-md px-1 pb-3 pt-2 transition-colors"
                   ghost-class="task-ghost"
                   drag-class="task-drag"
                   :animation="150"

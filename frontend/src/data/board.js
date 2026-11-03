@@ -1,6 +1,7 @@
 import { computed, reactive, ref } from 'vue'
 import api from './api'
 import { EVENTS, emit } from './bus'
+import { batched, onListUpdate } from './realtime'
 import { sortByPriority } from '@/utils/constants'
 
 /**
@@ -11,6 +12,8 @@ import { sortByPriority } from '@/utils/constants'
 export const currentProject = ref(null)
 export const projectDoc = ref(null)
 export const members = ref([])
+/** Whether the current user may edit (and so close or reopen) the project. */
+export const canEditProject = ref(false)
 export const tasks = ref([])
 /** Group tasks (epics) for the board's epic rail. */
 export const epics = ref([])
@@ -108,11 +111,13 @@ export async function loadProject(name, { force = false } = {}) {
     ])
     projectDoc.value = project.doc
     members.value = project.members || []
+    canEditProject.value = Boolean(project.can_write)
     tasks.value = rows || []
     epics.value = epicRows || []
   } catch (e) {
     error.value = e
     projectDoc.value = null
+    canEditProject.value = false
     tasks.value = []
   } finally {
     loading.value = false
@@ -342,4 +347,56 @@ export function flattenTree({ roots, children }, collapsed) {
 
   for (const root of roots) walk(root, 0)
   return out
+}
+
+/**
+ * Keep the open project in step with everyone else: when any task or the
+ * project itself is saved (here, in another tab, or in the desk), re-read just
+ * the rows that changed. Returns a function that stops listening.
+ */
+export function watchBoardLive() {
+  const refreshTasks = batched(async (names) => {
+    const project = currentProject.value
+    if (!project) return
+    let rows
+    try {
+      rows = (await api.getTaskRows(names)) || []
+    } catch {
+      return
+    }
+    const byName = new Map(rows.map((row) => [row.name, row]))
+    let epicsChanged = false
+    for (const name of names) {
+      const row = byName.get(name)
+      const onBoard = tasks.value.some((t) => t.name === name)
+      if (row && row.project === project) {
+        upsertTask(row)
+        epicsChanged ||= Boolean(row.is_group || row.parent_task)
+      } else if (onBoard) {
+        // deleted, moved to another project, or no longer visible to us
+        removeTask(name)
+        epicsChanged = true
+      }
+    }
+    if (epicsChanged) loadEpics(project)
+  })
+
+  const refreshProject = batched(async (names) => {
+    const project = currentProject.value
+    if (!project || !names.includes(project)) return
+    try {
+      const fresh = await api.getProject(project)
+      projectDoc.value = fresh.doc
+      members.value = fresh.members || []
+      canEditProject.value = Boolean(fresh.can_write)
+    } catch {
+      // keep what is on screen
+    }
+  })
+
+  const stops = [
+    onListUpdate('Task', (data) => refreshTasks(data.name)),
+    onListUpdate('Project', (data) => refreshProject(data.name)),
+  ]
+  return () => stops.forEach((stop) => stop())
 }

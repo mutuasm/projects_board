@@ -1,12 +1,11 @@
 <template>
   <div class="flex h-full min-h-0 flex-col">
     <header
-      class="shrink-0 border-b border-outline-gray-2 px-4 pb-3 pt-safe-top sm:px-5 sm:py-4"
+      class="shrink-0 border-b border-outline-gray-2 px-4 py-3 sm:px-5 sm:py-4"
     >
-      <div class="flex items-center gap-2 pt-3 sm:pt-0">
-        <SidebarToggle />
+      <div class="flex items-center gap-2">
         <div class="min-w-0">
-          <h1 class="truncate text-lg font-semibold text-ink-gray-9 sm:text-xl">
+          <h1 class="truncate text-xl font-semibold tracking-tight text-ink-gray-9 sm:text-[26px] sm:leading-9">
             Projects
           </h1>
           <p class="text-xs text-ink-gray-5 sm:text-sm">
@@ -88,9 +87,18 @@
           v-for="project in filtered"
           :key="project.name"
           :to="{ name: 'Board', params: { project: project.name } }"
-          class="pb-card flex flex-col gap-3 p-4"
+          class="pb-card flex flex-col gap-3 !rounded-xl p-4"
         >
-          <div class="flex items-start gap-2">
+          <div class="flex items-start gap-3">
+            <span
+              class="grid size-9 shrink-0 place-items-center rounded-lg"
+              :style="{
+                backgroundColor: `${projectColor(project.name)}26`,
+                color: projectColor(project.name),
+              }"
+            >
+              <LucideFolderKanban class="size-[18px]" />
+            </span>
             <div class="min-w-0 flex-1">
               <h2 class="truncate text-base font-medium text-ink-gray-9">
                 {{ project.project_name }}
@@ -147,7 +155,7 @@
       <!-- table -->
       <div
         v-else
-        class="thin-scrollbar overflow-x-auto rounded-lg border border-outline-gray-2"
+        class="pb-panel thin-scrollbar overflow-x-auto"
       >
         <table class="w-full min-w-[46rem] text-sm">
           <thead class="bg-surface-gray-1 text-xs uppercase tracking-wide text-ink-gray-5">
@@ -168,8 +176,16 @@
               @click="$router.push({ name: 'Board', params: { project: project.name } })"
             >
               <td class="px-3 py-2">
-                <p class="font-medium text-ink-gray-8">{{ project.project_name }}</p>
-                <p class="text-xs text-ink-gray-5">{{ project.name }}</p>
+                <div class="flex items-center gap-2.5">
+                  <span
+                    class="size-3 shrink-0 rounded-[4px]"
+                    :style="{ backgroundColor: projectColor(project.name) }"
+                  />
+                  <div class="min-w-0">
+                    <p class="font-medium text-ink-gray-8">{{ project.project_name }}</p>
+                    <p class="text-xs text-ink-gray-5">{{ project.name }}</p>
+                  </div>
+                </div>
               </td>
               <td class="px-3 py-2">
                 <Badge
@@ -227,16 +243,17 @@ import NullableSelect from '@/components/NullableSelect.vue'
 import AvatarStack from '@/components/AvatarStack.vue'
 import CreateProjectDialog from '@/components/CreateProjectDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
-import SidebarToggle from '@/components/SidebarToggle.vue'
 import { loadProjects, loadingProjects, projects } from '@/data/projects'
 import { isNarrow } from '@/data/ui'
 import { permissions, projectStatuses } from '@/data/session'
-import { PROJECT_STATUS_STYLES } from '@/utils/constants'
+import { PROJECT_STATUS_STYLES, projectColor } from '@/utils/constants'
 import { formatDate, isOverdue } from '@/utils/format'
 
 const router = useRouter()
 const search = ref('')
-const statusFilter = ref('Open')
+// Paused projects are still live work, so the default view keeps them.
+const ACTIVE = 'active'
+const statusFilter = ref(ACTIVE)
 const layout = ref(localStorage.getItem('pb:projects-layout') || 'cards')
 const showNew = ref(false)
 
@@ -245,13 +262,18 @@ const effectiveLayout = computed(() => (isNarrow.value ? 'cards' : layout.value)
 
 const statusOptions = computed(() => [
   { label: 'All statuses', value: '' },
+  { label: 'Active', value: ACTIVE },
   ...projectStatuses.value.map((s) => ({ label: s, value: s })),
 ])
 
 const filtered = computed(() => {
   const term = search.value.trim().toLowerCase()
   return projects.value.filter((project) => {
-    if (statusFilter.value && project.status !== statusFilter.value) return false
+    if (statusFilter.value === ACTIVE) {
+      if (!['Open', 'On hold'].includes(project.status)) return false
+    } else if (statusFilter.value && project.status !== statusFilter.value) {
+      return false
+    }
     if (term && !project.project_name.toLowerCase().includes(term)) return false
     return true
   })

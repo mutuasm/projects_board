@@ -49,7 +49,7 @@ body {
 @media (max-width: 767px) {
   input:not([type='checkbox']):not([type='radio']):not([type='range']),
   select,
-  textarea,
+  textarea:not(.pb-title),
   .ProseMirror {
     font-size: 16px !important;
   }
@@ -230,28 +230,86 @@ body {
 .task-ghost {
   @apply opacity-40;
 }
-.task-ghost > * {
-  @apply border-dashed border-outline-gray-3;
+/* the slot a card will drop into: an outline, not a floating card */
+.task-ghost.pb-card {
+  box-shadow: none;
+  outline: 1.5px dashed theme('colors.gray.300');
+  transform: none;
 }
 .task-drag {
-  @apply rotate-1 shadow-lg;
+  @apply rotate-1;
+  box-shadow: 0 12px 28px rgb(16 24 40 / 0.18);
 }
 
 @layer components {
   /*
-   * Flat surfaces: a single hairline and a background shift on hover, no
-   * shadows. Shadow is reserved for things that genuinely float above the
-   * page (drawers, dialogs, the floating action bars).
+   * Cards sit on the page with a soft shadow instead of a border, lift a
+   * little under the pointer and settle when pressed. Panels keep the hairline.
    */
   .pb-card {
-    @apply rounded-md border border-outline-gray-2 bg-surface-white transition-colors;
+    @apply rounded-lg bg-surface-white;
+    box-shadow:
+      0 1px 2px rgb(16 24 40 / 0.05),
+      0 1px 3px rgb(16 24 40 / 0.08);
+    transition:
+      box-shadow 180ms ease,
+      transform 180ms ease;
   }
   .pb-card:hover {
-    @apply border-outline-gray-3;
+    box-shadow:
+      0 2px 4px rgb(16 24 40 / 0.05),
+      0 8px 20px rgb(16 24 40 / 0.09);
+    transform: translateY(-1px);
+  }
+  .pb-card:active {
+    transform: translateY(0) scale(0.995);
+    transition-duration: 80ms;
+  }
+  .pb-card-selected,
+  .pb-card-selected:hover {
+    box-shadow:
+      0 0 0 2px theme('colors.gray.400'),
+      0 8px 20px rgb(16 24 40 / 0.09);
   }
 
+  /* a shadow vanishes on a dark ground, so a faint light edge stands in */
+  [data-theme='dark'] .pb-card {
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 0.06),
+      0 1px 3px rgb(0 0 0 / 0.5);
+  }
+  [data-theme='dark'] .pb-card:hover {
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 0.1),
+      0 8px 20px rgb(0 0 0 / 0.55);
+  }
+  [data-theme='dark'] .pb-card-selected {
+    box-shadow:
+      0 0 0 2px theme('colors.gray.500'),
+      0 8px 20px rgb(0 0 0 / 0.55);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pb-card {
+      transition: box-shadow 180ms ease;
+    }
+    .pb-card:hover,
+    .pb-card:active {
+      transform: none;
+    }
+  }
+
+  /* the same surface for cards that are not clickable: shadow, no lift */
   .pb-panel {
-    @apply rounded-lg border border-outline-gray-2 bg-surface-white;
+    @apply rounded-xl bg-surface-white;
+    box-shadow:
+      0 1px 2px rgb(16 24 40 / 0.05),
+      0 1px 3px rgb(16 24 40 / 0.08);
+  }
+  [data-theme='dark'] .pb-panel {
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 0.06),
+      0 1px 3px rgb(0 0 0 / 0.5);
   }
 
   /* Quiet, borderless input that only shows structure on focus. */
@@ -259,6 +317,19 @@ body {
     @apply rounded-md border border-transparent bg-surface-gray-2 text-ink-gray-8 transition-colors;
     @apply placeholder:text-ink-gray-4 hover:bg-surface-gray-3;
     @apply focus:border-outline-gray-3 focus:bg-surface-white focus:outline-none focus:ring-0;
+  }
+
+  /* square, quiet toolbar button: the task panel's header icons */
+  .pb-icon-btn {
+    @apply grid size-8 place-items-center rounded-lg text-ink-gray-6 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-9;
+  }
+
+  .pb-field-label {
+    @apply mb-1.5 text-sm font-medium text-ink-gray-8;
+  }
+
+  .pb-section-title {
+    @apply mb-2 text-sm font-semibold text-ink-gray-9;
   }
 
   .prose-f {

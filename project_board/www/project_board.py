@@ -27,6 +27,9 @@ def get_boot():
 			"csrf_token": frappe.sessions.get_csrf_token(),
 			"read_only_mode": bool(frappe.flags.read_only),
 			"default_route": "/project-board",
+			# only used when the page is served on a port (bench serve); behind
+			# nginx the socket shares the page's origin
+			"socketio_port": frappe.conf.socketio_port or 9000,
 		}
 	)
 

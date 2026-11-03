@@ -8,6 +8,13 @@ export const api = {
   getProject: (name) => call(`${NS}.get_project`, { name }),
   createProject: (values) => call(`${NS}.create_project`, values),
   updateProject: (name, values) => call(`${NS}.update_project`, { name, values }),
+  closeProject: (name, { status, note, cancelOpenTasks = false }) =>
+    call(`${NS}.close_project`, {
+      name,
+      status,
+      note,
+      cancel_open_tasks: cancelOpenTasks ? 1 : 0,
+    }),
   setProjectMembers: (project, users) =>
     call(`${NS}.set_project_members`, { project, users }),
   getProjectStats: (project) => call(`${NS}.get_project_stats`, { project }),
@@ -16,8 +23,11 @@ export const api = {
 
   // tasks
   getTasks: (params) => call(`${NS}.get_tasks`, params),
-  getMyTasks: (includeCompleted = 0) =>
-    call(`${NS}.get_my_tasks`, { include_completed: includeCompleted }),
+  getMyTasks: (includeCompleted = 0, completedDays = 0) =>
+    call(`${NS}.get_my_tasks`, {
+      include_completed: includeCompleted,
+      completed_days: completedDays,
+    }),
   getTask: (name) => call(`${NS}.get_task`, { name }),
   createTask: (values) => call(`${NS}.create_task`, values),
   updateTask: (name, values) => call(`${NS}.update_task`, { name, values }),
@@ -46,6 +56,21 @@ export const api = {
     call(`${NS}.get_project_updates`, { project, limit }),
   addProjectUpdate: (project, status) =>
     call(`${NS}.add_project_update`, { project, status }),
+
+  // scheduled check-ins (ERPNext progress collection)
+  getCheckinSettings: (project) => call(`${NS}.get_checkin_settings`, { project }),
+  saveCheckinSettings: (project, values) =>
+    call(`${NS}.save_checkin_settings`, { project, values }),
+  sendCheckinNow: (project) => call(`${NS}.send_checkin_now`, { project }),
+
+  // reviews
+  getReviewQueue: () => call(`${NS}.get_review_queue`),
+
+  // live updates + inbox
+  getTaskRows: (names) => call(`${NS}.get_task_rows`, { names }),
+  getNotifications: (limit = 30) => call(`${NS}.get_notifications`, { limit }),
+  markNotificationsRead: (names = null) =>
+    call(`${NS}.mark_notifications_read`, names ? { names } : {}),
 
   // attachments
   deleteAttachment: (name) => call(`${NS}.delete_attachment`, { name }),

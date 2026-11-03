@@ -22,7 +22,9 @@ import { session } from './data/session'
 const app = createApp(App)
 
 setConfig('resourceFetcher', frappeRequest)
-app.use(FrappeUI)
+// frappe-ui would open its own socket on a hard-coded port; data/realtime.js
+// opens one on the port the site actually uses.
+app.use(FrappeUI, { socketio: false })
 app.use(router)
 
 const globalComponents = {

@@ -24,6 +24,7 @@ export const PRIORITY_ORDER = ['Urgent', 'High', 'Medium', 'Low']
 
 export const PROJECT_STATUS_STYLES = {
   Open: { theme: 'blue' },
+  'On hold': { theme: 'orange' },
   Completed: { theme: 'green' },
   Cancelled: { theme: 'gray' },
 }
@@ -72,4 +73,25 @@ export function taskTypeStyle(type) {
       text: 'text-ink-gray-5',
     }
   )
+}
+
+/**
+ * ERPNext Projects have no colour field, so derive a stable one from the name:
+ * the same project gets the same swatch in the sidebar, header and task panel.
+ */
+const PROJECT_COLORS = [
+  '#d946ef', // fuchsia
+  '#16a34a', // green
+  '#2563eb', // blue
+  '#f97316', // orange
+  '#8b5cf6', // violet
+  '#0891b2', // cyan
+  '#e11d48', // rose
+  '#ca8a04', // amber
+]
+
+export function projectColor(name) {
+  let hash = 0
+  for (const char of String(name || '')) hash = (hash * 31 + char.charCodeAt(0)) | 0
+  return PROJECT_COLORS[Math.abs(hash) % PROJECT_COLORS.length]
 }

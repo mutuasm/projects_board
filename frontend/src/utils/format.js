@@ -72,3 +72,18 @@ export function plainText(html, limit = 140) {
     .trim()
   return text.length > limit ? `${text.slice(0, limit)}…` : text
 }
+
+/**
+ * Readable text from HTML, keeping paragraph breaks - for email replies, which
+ * ERPNext stores as HTML. DOMParser builds an inert document, so nothing in
+ * the markup runs.
+ */
+export function htmlToText(html) {
+  if (!html) return ''
+  if (!/[<&]/.test(html)) return html
+  const marked = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6]|blockquote)>/gi, '\n')
+  const doc = new DOMParser().parseFromString(marked, 'text/html')
+  return (doc.body.textContent || '').replace(/\n{3,}/g, '\n\n').trim()
+}
