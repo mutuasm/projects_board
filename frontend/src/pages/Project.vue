@@ -253,7 +253,7 @@ const switcherOptions = computed(() => [
 
 // a new tab, so the board stays where it was
 function openInDesk() {
-  window.open(`/app/project/${props.project}`, '_blank')
+  window.open(`/desk/project/${props.project}`, '_blank')
 }
 
 const projectStatusTheme = computed(

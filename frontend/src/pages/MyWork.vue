@@ -388,7 +388,7 @@
             <h2 class="mb-2 text-sm font-semibold text-ink-gray-9">Quick links</h2>
             <div class="flex flex-col">
               <a
-                :href="`/app/todo?allocated_to=${encodeURIComponent(user.name || '')}`"
+                :href="`/desk/todo?allocated_to=${encodeURIComponent(user.name || '')}`"
                 target="_blank"
                 rel="noopener"
                 class="-mx-2 flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-ink-gray-7 hover:bg-surface-gray-2"
@@ -398,7 +398,7 @@
                 <LucideArrowUpRight class="ml-auto size-3.5 text-ink-gray-4" />
               </a>
               <a
-                href="/app/timesheet"
+                href="/desk/timesheet"
                 target="_blank"
                 rel="noopener"
                 class="-mx-2 flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-ink-gray-7 hover:bg-surface-gray-2"

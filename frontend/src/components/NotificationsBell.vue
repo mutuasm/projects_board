@@ -140,7 +140,7 @@ function openItem(item, close) {
     router.push({ name: 'Board', params: { project: item.document_name } })
   } else if (item.document_type && item.document_name) {
     const slug = item.document_type.toLowerCase().replace(/ /g, '-')
-    window.open(`/app/${slug}/${encodeURIComponent(item.document_name)}`, '_blank')
+    window.open(`/desk/${slug}/${encodeURIComponent(item.document_name)}`, '_blank')
   }
 }
 

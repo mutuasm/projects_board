@@ -33,9 +33,9 @@ vice versa:
 
 ### Desk integration
 
-The app adds **no tile of its own** to the apps screen. On install it repoints the
-existing ERPNext **Projects** workspace at `/project-board`, so Projects stays the
-single entry point. It also enables `track_changes` on Task (via a Property
+The app adds a **Project Board** tile to the desk's apps screen, shown to users who
+can read Projects and Tasks. On install it also repoints the existing ERPNext
+**Projects** workspace at `/project-board`. It also enables `track_changes` on Task (via a Property
 Setter) so Frappe writes the Version records the task history reads. Both are
 reapplied after `bench migrate` and undone by `bench uninstall-app`.
 
@@ -76,6 +76,11 @@ The portal is responsive down to ~360px, not a separate mobile build:
 - the task detail panel opens as a full-screen sheet;
 - "New task" becomes a floating action button;
 - `env(safe-area-inset-*)` is honoured for notches and home indicators.
+
+### Requirements
+
+Frappe and ERPNext v16 (16.50 or later), Python 3.14 and Node 24, as ERPNext 16
+itself requires.
 
 ### Install
 

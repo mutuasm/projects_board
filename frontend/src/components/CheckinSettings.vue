@@ -151,7 +151,7 @@ const checks = computed(() => [
     blocking: true,
     label: 'Outgoing email',
     help: 'ERPNext has no default outgoing email account to send from.',
-    link: '/app/email-account/new',
+    link: '/desk/email-account/new',
     linkLabel: 'Set one up in Desk',
   },
   {
@@ -162,7 +162,7 @@ const checks = computed(() => [
       ? `Goes to ${recipients.value.map((r) => r.full_name).join(', ')}`
       : 'Team members',
     help: 'The check-in goes to the project team, and this project has none with an email.',
-    link: `/app/project/${props.project}`,
+    link: `/desk/project/${props.project}`,
     linkLabel: 'Add them in Desk',
   },
   {
@@ -171,7 +171,7 @@ const checks = computed(() => [
     blocking: false,
     label: 'Replies come back',
     help: 'Without a default incoming email account, replies are not collected into Updates.',
-    link: '/app/email-account',
+    link: '/desk/email-account',
     linkLabel: 'Email accounts',
   },
   {

@@ -20,7 +20,7 @@
       <NotificationsBell class="ml-auto" />
 
       <a
-        href="/app"
+        href="/desk"
         class="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-outline-gray-2 px-3 text-sm font-medium text-ink-gray-8 transition-colors hover:bg-surface-gray-2"
         title="Go to the ERPNext desk"
       >

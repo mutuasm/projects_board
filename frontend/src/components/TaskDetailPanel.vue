@@ -76,7 +76,7 @@
               <a
                 v-if="task"
                 class="pb-icon-btn"
-                :href="`/app/task/${task.name}`"
+                :href="`/desk/task/${task.name}`"
                 target="_blank"
                 rel="noopener"
                 aria-label="Open in Desk"

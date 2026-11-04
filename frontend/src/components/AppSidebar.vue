@@ -211,7 +211,7 @@ const recentProjects = computed(() =>
 const { currentTheme, setTheme } = useTheme()
 
 const userMenu = computed(() => [
-  { label: 'Go to Desk', icon: 'monitor', onClick: () => (window.location.href = '/app') },
+  { label: 'Go to Desk', icon: 'monitor', onClick: () => (window.location.href = '/desk') },
   { label: 'Log out', icon: 'log-out', onClick: logout },
 ])
 

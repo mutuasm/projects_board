@@ -912,7 +912,7 @@ def update_task(name: str, values):
 	if values:
 		doc = frappe.get_doc("Task", name)
 		doc.update(values)
-		_stamp_completion(doc)
+		_prepare_status_change(doc)
 		doc.save()
 
 	if assignees is not None:
@@ -921,17 +921,33 @@ def update_task(name: str, values):
 	return get_task(name)
 
 
-def _stamp_completion(doc):
-	"""Fill the "who/when" fields ERPNext leaves blank when a task is completed.
+def _prepare_status_change(doc):
+	"""Check and fill in what a status change from the board needs.
 
-	`closing_date` is the date the desk shows on a completed task; ERPNext
-	never sets it itself.
+	ERPNext quietly turns Overdue back into Open (or Working) when the task is
+	not past its end date, which would snap the card back with no reason given,
+	so that is refused up front. It fills `completed_on` and, on reopen, clears
+	`completed_on`/`completed_by` itself, but never touches `closing_date`, the
+	date the desk shows on a completed task.
 	"""
-	if doc.status != "Completed" or doc.get_db_value("status") == "Completed":
+	previous = doc.get_db_value("status")
+	if doc.status == previous:
 		return
-	doc.completed_by = doc.completed_by or frappe.session.user
-	doc.completed_on = doc.completed_on or today()
-	doc.closing_date = doc.closing_date or today()
+
+	if doc.status == "Overdue" and not (doc.exp_end_date and getdate(doc.exp_end_date) < getdate()):
+		frappe.throw(
+			_("{0} isn't past its end date, so it can't be Overdue. Move its end date instead.").format(
+				doc.name
+			),
+			title=_("Not overdue"),
+		)
+
+	if doc.status == "Completed":
+		doc.completed_by = doc.completed_by or frappe.session.user
+		doc.completed_on = doc.completed_on or today()
+		doc.closing_date = doc.closing_date or today()
+	elif previous == "Completed" and doc.status != "Cancelled":
+		doc.closing_date = None
 
 
 @frappe.whitelist()
@@ -947,7 +963,7 @@ def move_task(name: str, status: str):
 		return _move_task_response(name)
 
 	doc.status = status
-	_stamp_completion(doc)
+	_prepare_status_change(doc)
 	doc.save()
 
 	return _move_task_response(name)
@@ -1943,7 +1959,7 @@ def bulk_update_tasks(names, values):
 			if values:
 				doc = frappe.get_doc("Task", name)
 				doc.update(values)
-				_stamp_completion(doc)
+				_prepare_status_change(doc)
 				doc.save()
 			if assignees is not None:
 				set_assignees(name, assignees)
