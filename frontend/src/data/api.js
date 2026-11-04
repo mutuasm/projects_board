@@ -69,6 +69,7 @@ export const api = {
   getReviewQueue: () => call(`${NS}.get_review_queue`),
 
   // recurring tasks (Frappe Auto Repeat)
+  enableRepeatingTasks: () => call(`${NS}.enable_repeating_tasks`),
   setTaskRepeat: (task, rule) => call(`${NS}.set_task_repeat`, { task, rule }),
   stopTaskRepeat: (task) => call(`${NS}.stop_task_repeat`, { task }),
 

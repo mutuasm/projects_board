@@ -67,11 +67,13 @@ body {
   }
 }
 
-/* Keep a scrolled pane from rubber-banding the whole page behind it. */
-.thin-scrollbar,
-.no-scrollbar {
-  overscroll-behavior: contain;
-}
+/*
+ * No `overscroll-behavior: contain` on scroll panes. It traps a wheel or
+ * trackpad gesture inside a pane that cannot scroll that way - a sideways-only
+ * table wrapper ate vertical scrolling in Firefox, and board columns ate
+ * horizontal scrolling. The page itself is already pinned (html/body above),
+ * and the overlays (task panel, popovers) are not inside any scrolling pane.
+ */
 
 
 /*

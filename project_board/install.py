@@ -31,10 +31,13 @@ def after_migrate():
 def _enable_recurring_tasks():
 	"""Recurring tasks are an extra: if switching them on fails, say so in the
 	Error Log rather than abort the whole install or migrate."""
+	# A savepoint, not a full rollback: the workspace link and change tracking
+	# set just before this are in the same transaction and must survive.
+	frappe.db.savepoint("pb_recurring")
 	try:
 		enable_task_auto_repeat()
 	except Exception:
-		frappe.db.rollback()
+		frappe.db.rollback(save_point="pb_recurring")
 		frappe.log_error(title="Project Board: could not switch on Auto Repeat for Task")
 		print("Project Board: could not switch on recurring tasks - see the Error Log")
 

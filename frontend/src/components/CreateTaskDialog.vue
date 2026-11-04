@@ -70,6 +70,25 @@
           v-model="form.repeat"
           :anchor="form.exp_start_date || form.exp_end_date"
         />
+        <!-- not silently missing: say why, and let an admin fix it here -->
+        <div
+          v-else
+          class="flex flex-wrap items-center gap-2 rounded-lg bg-surface-gray-1 px-3 py-2 text-xs text-ink-gray-6"
+        >
+          <LucideRepeat class="size-3.5 shrink-0" />
+          <span class="min-w-0 flex-1">
+            Repeating tasks aren't switched on for this site yet.
+            <template v-if="!permissions.isSystemManager">Ask your administrator.</template>
+          </span>
+          <Button
+            v-if="permissions.isSystemManager"
+            size="sm"
+            :loading="enablingRepeat"
+            @click="enableRepeat"
+          >
+            Switch on
+          </Button>
+        </div>
 
         <div>
           <label class="mb-1.5 block text-xs text-ink-gray-5">Assignees</label>
@@ -120,7 +139,14 @@ import RepeatEditor from './RepeatEditor.vue'
 import api from '@/data/api'
 import { tasks } from '@/data/board'
 import { projects } from '@/data/projects'
-import { boardStatuses, permissions, taskPriorities, taskTypes, user } from '@/data/session'
+import {
+  boardStatuses,
+  permissions,
+  session,
+  taskPriorities,
+  taskTypes,
+  user,
+} from '@/data/session'
 import { statusStyle } from '@/utils/constants'
 
 const props = defineProps({
@@ -140,6 +166,22 @@ const show = computed({
 const saving = ref(false)
 const errorMessage = ref('')
 const subjectInput = ref(null)
+const enablingRepeat = ref(false)
+
+/** Same switch `bench migrate` flips; then re-read the boot so the editor appears. */
+async function enableRepeat() {
+  enablingRepeat.value = true
+  errorMessage.value = ''
+  try {
+    await api.enableRepeatingTasks()
+    await session.boot.reload()
+  } catch (e) {
+    errorMessage.value =
+      e?.messages?.join(', ') || e?.message || 'Could not switch on repeating tasks'
+  } finally {
+    enablingRepeat.value = false
+  }
+}
 
 function blankForm() {
   return {

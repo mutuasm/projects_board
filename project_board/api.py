@@ -175,7 +175,8 @@ def get_boot_info():
 		"can_submit_timesheet": frappe.has_permission("Timesheet", ptype="create"),
 		"can_post_update": frappe.has_permission("Project Update", ptype="create"),
 		# false until `bench migrate` has switched Auto Repeat on for Task
-		"can_repeat_tasks": bool(frappe.get_meta("Task").allow_auto_repeat),
+		"can_repeat_tasks": _repeat_ready(),
+		"is_system_manager": "System Manager" in frappe.get_roles(),
 		"options": get_field_options(),
 	}
 
@@ -1652,6 +1653,29 @@ def _repeat_info(task) -> dict | None:
 	return rule
 
 
+def _repeat_ready() -> bool:
+	"""Auto Repeat allowed on Task *and* the link field it needs exists."""
+	meta = frappe.get_meta("Task")
+	return bool(meta.allow_auto_repeat and meta.has_field("auto_repeat"))
+
+
+@frappe.whitelist()
+def enable_repeating_tasks():
+	"""Switch Auto Repeat on for Task from the app - what `bench migrate` does.
+
+	For a site where migrate has not run yet, or where it could not do it; a
+	failure comes back as the real error instead of only an Error Log entry.
+	"""
+	frappe.only_for("System Manager")
+	from project_board.install import enable_task_auto_repeat
+
+	enable_task_auto_repeat()
+	frappe.db.commit()  # nosemgrep: schema change; the boot read that follows must see it
+	if not _repeat_ready():
+		frappe.throw(_("Auto Repeat is still not available for Task"))
+	return True
+
+
 @frappe.whitelist()
 def set_task_repeat(task: str, rule):
 	"""Make a task repeat, or change how it repeats.
@@ -1661,7 +1685,7 @@ def set_task_repeat(task: str, rule):
 	task. Occurrences are still made with the series owner's access to it.
 	"""
 	frappe.has_permission("Task", ptype="write", doc=task, throw=True)
-	if not frappe.get_meta("Task").allow_auto_repeat:
+	if not _repeat_ready():
 		frappe.throw(_("Repeating tasks are not switched on yet - run `bench migrate`"))
 	if isinstance(rule, str):
 		rule = json.loads(rule)
