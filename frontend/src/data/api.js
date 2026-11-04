@@ -23,6 +23,8 @@ export const api = {
 
   // tasks
   getTasks: (params) => call(`${NS}.get_tasks`, params),
+  getMyDoneTasks: (start = 0, limit = 50) =>
+    call(`${NS}.get_my_done_tasks`, { start, limit }),
   getMyTasks: (includeCompleted = 0, completedDays = 0) =>
     call(`${NS}.get_my_tasks`, {
       include_completed: includeCompleted,
@@ -66,9 +68,14 @@ export const api = {
   // reviews
   getReviewQueue: () => call(`${NS}.get_review_queue`),
 
+  // recurring tasks (Frappe Auto Repeat)
+  setTaskRepeat: (task, rule) => call(`${NS}.set_task_repeat`, { task, rule }),
+  stopTaskRepeat: (task) => call(`${NS}.stop_task_repeat`, { task }),
+
   // live updates + inbox
   getTaskRows: (names) => call(`${NS}.get_task_rows`, { names }),
-  getNotifications: (limit = 30) => call(`${NS}.get_notifications`, { limit }),
+  getNotifications: (limit = 30, start = 0) =>
+    call(`${NS}.get_notifications`, { limit, start }),
   markNotificationsRead: (names = null) =>
     call(`${NS}.mark_notifications_read`, names ? { names } : {}),
 

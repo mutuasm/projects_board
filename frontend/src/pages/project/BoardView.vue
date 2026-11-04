@@ -18,7 +18,7 @@
       <div v-else class="no-scrollbar snap-columns h-full overflow-auto">
         <div class="min-w-max p-3 pb-24 sm:p-4 sm:pb-6" :class="single ? 'h-full' : ''">
           <section
-            v-for="lane in lanes"
+            v-for="lane in pagedLanes"
             :key="lane.key"
             :data-lane="lane.key"
             class="mb-5 last:mb-0"
@@ -65,7 +65,7 @@
                     {{ statusStyle(status).label || status }}
                   </h2>
                   <span class="text-xs tabular-nums text-ink-gray-4">
-                    {{ (lane.columns[status] || []).length }}
+                    {{ lane.totals[status] || 0 }}
                   </span>
                   <button
                     v-if="permissions.canCreateTask && status !== 'Cancelled'"
@@ -101,6 +101,10 @@
                     <TaskCard :task="element" @filter-epic="(e) => (filters.epic = e)" />
                   </template>
                   <template #footer>
+                    <LoadMore
+                      v-if="(lane.totals[status] || 0) > limitFor(lane.key, status)"
+                      @more="moreFor(lane.key, status)"
+                    />
                     <div
                       v-if="!(lane.columns[status] || []).length"
                       class="rounded-md border border-dashed border-outline-gray-2 py-6 text-center text-xs text-ink-gray-4"
@@ -127,11 +131,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watchEffect } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import draggable from 'vuedraggable'
 import { toast } from 'frappe-ui'
 import BoardSkeleton from '@/components/BoardSkeleton.vue'
 import CreateTaskDialog from '@/components/CreateTaskDialog.vue'
+import LoadMore from '@/components/LoadMore.vue'
 import EpicRail from '@/components/EpicRail.vue'
 import TaskCard from '@/components/TaskCard.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
@@ -172,6 +177,37 @@ const lanes = ref([])
 watchEffect(() => {
   lanes.value = buildLanes(columns.value, filters.swimlane)
 })
+
+/**
+ * A column renders 30 cards and grows as you scroll down it, so a project with
+ * hundreds of tasks still opens instantly. Sortable gets the page-sized slice;
+ * the counts in the column heads stay the full totals.
+ */
+const COLUMN_PAGE = 30
+const columnLimits = ref({})
+const limitFor = (lane, status) => columnLimits.value[`${lane}|${status}`] || COLUMN_PAGE
+function moreFor(lane, status) {
+  columnLimits.value = {
+    ...columnLimits.value,
+    [`${lane}|${status}`]: limitFor(lane, status) + COLUMN_PAGE,
+  }
+}
+watch(
+  () => [props.project, filters.swimlane],
+  () => (columnLimits.value = {}),
+)
+
+const pagedLanes = computed(() =>
+  lanes.value.map((lane) => {
+    const columns = {}
+    const totals = {}
+    for (const [status, list] of Object.entries(lane.columns)) {
+      columns[status] = list.slice(0, limitFor(lane.key, status))
+      totals[status] = list.length
+    }
+    return { ...lane, columns, totals }
+  }),
+)
 
 function toggleRail() {
   railCollapsed.value = !railCollapsed.value

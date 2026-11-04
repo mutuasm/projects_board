@@ -6,17 +6,38 @@ import { connected, onNotification } from './realtime'
 export const notifications = ref([])
 export const unread = ref(0)
 export const loadingNotifications = ref(false)
+export const hasMoreNotifications = ref(false)
+
+const PAGE = 30
 
 let started = false
 
 export async function loadNotifications() {
   loadingNotifications.value = true
   try {
-    const res = await api.getNotifications(30)
+    const res = await api.getNotifications(PAGE)
     notifications.value = res?.items || []
     unread.value = res?.unread || 0
+    hasMoreNotifications.value = notifications.value.length === PAGE
   } catch {
     // the bell just stays as it was
+  } finally {
+    loadingNotifications.value = false
+  }
+}
+
+/** The next page of older notifications, appended as the list is scrolled. */
+export async function loadMoreNotifications() {
+  if (loadingNotifications.value || !hasMoreNotifications.value) return
+  loadingNotifications.value = true
+  try {
+    const res = await api.getNotifications(PAGE, notifications.value.length)
+    const seen = new Set(notifications.value.map((n) => n.name))
+    const page = (res?.items || []).filter((n) => !seen.has(n.name))
+    notifications.value = [...notifications.value, ...page]
+    hasMoreNotifications.value = (res?.items || []).length === PAGE
+  } catch {
+    // try again on the next scroll
   } finally {
     loadingNotifications.value = false
   }

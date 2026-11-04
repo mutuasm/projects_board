@@ -91,7 +91,22 @@ TASK_LIST_FIELDS = [
 	"idx",
 ]
 
+def _task_list_fields() -> list[str]:
+	"""TASK_LIST_FIELDS, plus the Auto Repeat link once install has added it.
+
+	The field only exists after `bench migrate` has run this app's
+	after_migrate, so asking for it before then would break every list.
+	"""
+	if frappe.get_meta("Task").has_field("auto_repeat"):
+		return [*TASK_LIST_FIELDS, "auto_repeat"]
+	return TASK_LIST_FIELDS
+
+
 CLOSED_PROJECT_STATUSES = ("Completed", "Cancelled")
+
+# Auto Repeat's own frequencies, in the order the board offers them.
+REPEAT_FREQUENCIES = ("Daily", "Weekly", "Fortnightly", "Monthly", "Quarterly", "Half-yearly", "Yearly")
+WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
 # ERPNext's "progress collection" settings on Project. Written only through
 # save_checkin_settings(), which validates them, never the generic update.
@@ -159,6 +174,8 @@ def get_boot_info():
 		"can_create_task": frappe.has_permission("Task", ptype="create"),
 		"can_submit_timesheet": frappe.has_permission("Timesheet", ptype="create"),
 		"can_post_update": frappe.has_permission("Project Update", ptype="create"),
+		# false until `bench migrate` has switched Auto Repeat on for Task
+		"can_repeat_tasks": bool(frappe.get_meta("Task").allow_auto_repeat),
 		"options": get_field_options(),
 	}
 
@@ -655,7 +672,7 @@ def get_tasks(
 		"Task",
 		filters=filters,
 		or_filters=or_filters or None,
-		fields=TASK_LIST_FIELDS,
+		fields=_task_list_fields(),
 		order_by=order_by,
 		limit_page_length=cint(limit) or 0,
 	)
@@ -667,27 +684,11 @@ def get_tasks(
 def get_my_tasks(include_completed: int = 0, completed_days: int = 0):
 	"""Every task the logged-in user is assigned to, across the projects they can see.
 
-	`_assign` only lists *open* assignments, and ERPNext closes an assignment when
-	its task is completed or the assignee marks their part done - so reading it
-	alone drops tasks you were on. The ToDo table is the record of every
-	assignment, so both are read. A cancelled ToDo is an un-assignment and does
-	not count.
-
 	`completed_days` keeps finished tasks from that recent window even when
-	`include_completed` is off, for the page's "recently completed" list.
+	`include_completed` is off, for the page's "recently completed" list. Older
+	finished work is paged in through get_my_done_tasks().
 	"""
-	user = frappe.session.user
-	todos = frappe.get_all(
-		"ToDo",
-		filters={"allocated_to": user, "reference_type": "Task", "status": ("!=", "Cancelled")},
-		fields=["reference_name", "status"],
-	)
-	open_assignments = {t.reference_name for t in todos if t.status == "Open"}
-	# the JSON quotes make this an exact match, not a substring of another email
-	open_assignments |= set(
-		frappe.get_all("Task", filters=[["_assign", "like", f'%"{user}"%']], pluck="name")
-	)
-	names = open_assignments | {t.reference_name for t in todos}
+	open_assignments, names = _my_task_names()
 	if not names:
 		return []
 
@@ -706,11 +707,58 @@ def get_my_tasks(include_completed: int = 0, completed_days: int = 0):
 		"Task",
 		filters=filters,
 		or_filters=or_filters,
-		fields=TASK_LIST_FIELDS,
+		fields=_task_list_fields(),
 		order_by="exp_end_date asc, priority desc, modified desc",
 		limit_page_length=0,
 	)
 
+	return _my_task_rows(tasks, open_assignments)
+
+
+@frappe.whitelist()
+def get_my_done_tasks(start: int = 0, limit: int = 50):
+	"""Finished tasks you were on, newest first, a page at a time ("Show done")."""
+	open_assignments, names = _my_task_names()
+	if not names:
+		return []
+
+	tasks = frappe.get_list(
+		"Task",
+		filters=[
+			["name", "in", list(names)],
+			["is_template", "=", 0],
+			["status", "in", ["Completed", "Cancelled"]],
+		],
+		fields=_task_list_fields(),
+		order_by="modified desc",
+		limit_start=cint(start),
+		limit_page_length=min(cint(limit) or 50, 200),
+	)
+	return _my_task_rows(tasks, open_assignments)
+
+
+def _my_task_names() -> tuple[set[str], set[str]]:
+	"""(tasks with an open assignment for you, every task you were assigned to).
+
+	`_assign` only lists *open* assignments, and ERPNext closes an assignment
+	when its task is completed or the assignee marks their part done - so the
+	ToDo table is read too. A cancelled ToDo is an un-assignment.
+	"""
+	user = frappe.session.user
+	todos = frappe.get_all(
+		"ToDo",
+		filters={"allocated_to": user, "reference_type": "Task", "status": ("!=", "Cancelled")},
+		fields=["reference_name", "status"],
+	)
+	open_assignments = {t.reference_name for t in todos if t.status == "Open"}
+	# the JSON quotes make this an exact match, not a substring of another email
+	open_assignments |= set(
+		frappe.get_all("Task", filters=[["_assign", "like", f'%"{user}"%']], pluck="name")
+	)
+	return open_assignments, open_assignments | {t.reference_name for t in todos}
+
+
+def _my_task_rows(tasks: list[dict], open_assignments: set[str]) -> list[dict]:
 	tasks = _attach_epics(_attach_blocked_state(_attach_comment_counts(_attach_assignees(tasks))))
 	_attach_project_titles(tasks)
 	for task in tasks:
@@ -791,6 +839,7 @@ def get_task(name: str):
 	data["can_write"] = frappe.has_permission("Task", ptype="write", doc=name)
 	data["can_delete"] = frappe.has_permission("Task", ptype="delete", doc=name)
 	data["created_by"] = _user_map({doc.owner}).get(doc.owner) or {"name": doc.owner, "full_name": doc.owner}
+	data["repeat"] = _repeat_info(doc)
 
 	return data
 
@@ -835,6 +884,12 @@ def create_task(**kwargs):
 		assignees = json.loads(assignees)
 	if assignees:
 		set_assignees(doc.name, assignees)
+
+	repeat = kwargs.get("repeat")
+	if isinstance(repeat, str):
+		repeat = json.loads(repeat) if repeat.strip() else None
+	if repeat:
+		set_task_repeat(doc.name, repeat)
 
 	return get_task(doc.name)
 
@@ -899,7 +954,7 @@ def move_task(name: str, status: str):
 
 def _move_task_response(name: str) -> dict:
 	"""Re-read via get_list so the row has the exact shape the board renders."""
-	row = frappe.get_list("Task", filters={"name": name}, fields=TASK_LIST_FIELDS)[0]
+	row = frappe.get_list("Task", filters={"name": name}, fields=_task_list_fields())[0]
 	return _attach_epics(_attach_blocked_state(_attach_comment_counts(_attach_assignees([row]))))[0]
 
 
@@ -1550,6 +1605,120 @@ def send_checkin_now(project: str):
 
 
 # ---------------------------------------------------------------------------
+# recurring tasks (Frappe Auto Repeat; see recurring.py)
+# ---------------------------------------------------------------------------
+
+
+def _repeat_info(task) -> dict | None:
+	"""The repeat rule a task belongs to, if any.
+
+	The task the series was set up on is its template ("is_template"); every
+	occurrence Auto Repeat makes links back to the same record.
+	"""
+	name = task.get("auto_repeat") if task.meta.has_field("auto_repeat") else None
+	if not name:
+		# a stopped series unlinks its template; show it as not repeating
+		return None
+
+	rule = frappe.db.get_value(
+		"Auto Repeat",
+		name,
+		[
+			"name",
+			"reference_document",
+			"frequency",
+			"repeat_on_day",
+			"repeat_on_last_day",
+			"start_date",
+			"end_date",
+			"next_schedule_date",
+			"status",
+			"disabled",
+		],
+		as_dict=True,
+	)
+	if not rule:
+		return None
+
+	rule["repeat_on_days"] = frappe.get_all(
+		"Auto Repeat Day", filters={"parent": name}, pluck="day", order_by="idx asc"
+	)
+	rule["is_template"] = rule.reference_document == task.name
+	rule["template_subject"] = (
+		task.subject
+		if rule["is_template"]
+		else frappe.db.get_value("Task", rule.reference_document, "subject")
+	)
+	return rule
+
+
+@frappe.whitelist()
+def set_task_repeat(task: str, rule):
+	"""Make a task repeat, or change how it repeats.
+
+	Only System Managers and Accounts users may create Auto Repeat records, so
+	the board creates it on the user's behalf - after checking they can edit the
+	task. Occurrences are still made with the series owner's access to it.
+	"""
+	frappe.has_permission("Task", ptype="write", doc=task, throw=True)
+	if not frappe.get_meta("Task").allow_auto_repeat:
+		frappe.throw(_("Repeating tasks are not switched on yet - run `bench migrate`"))
+	if isinstance(rule, str):
+		rule = json.loads(rule)
+
+	frequency = rule.get("frequency")
+	if frequency not in REPEAT_FREQUENCIES:
+		frappe.throw(_("Pick how often the task repeats"))
+	days = [d for d in rule.get("repeat_on_days") or [] if d in WEEKDAYS] if frequency == "Weekly" else []
+
+	doc = frappe.get_doc("Task", task)
+	existing = _repeat_info(doc)
+	if existing and not existing["is_template"]:
+		frappe.throw(
+			_("This task is one occurrence of a repeating series; change the series on {0}").format(
+				existing["reference_document"]
+			)
+		)
+
+	if existing:
+		series = frappe.get_doc("Auto Repeat", existing["name"])
+	else:
+		series = frappe.new_doc("Auto Repeat")
+		series.reference_doctype = "Task"
+		series.reference_document = task
+		# the task itself is the first occurrence; Auto Repeat makes the next
+		# one a period after this (and moves a past date up to today)
+		series.start_date = doc.exp_start_date or doc.exp_end_date or today()
+
+	series.frequency = frequency
+	series.repeat_on_last_day = cint(rule.get("repeat_on_last_day")) if frequency not in ("Daily", "Weekly", "Fortnightly") else 0
+	series.end_date = rule.get("end_date") or None
+	series.disabled = 0
+	series.set("repeat_on_days", [{"day": d} for d in days])
+	series.flags.ignore_permissions = True
+	if existing:
+		series.save(ignore_permissions=True)
+	else:
+		series.insert(ignore_permissions=True)
+
+	return _repeat_info(frappe.get_doc("Task", task))
+
+
+@frappe.whitelist()
+def stop_task_repeat(task: str):
+	"""Stop a series. Occurrences already made stay; no new ones are created."""
+	frappe.has_permission("Task", ptype="write", doc=task, throw=True)
+	info = _repeat_info(frappe.get_doc("Task", task))
+	if not info:
+		return None
+
+	series = frappe.get_doc("Auto Repeat", info["name"])
+	series.disabled = 1
+	series.save(ignore_permissions=True)
+	return None
+
+
+# ---------------------------------------------------------------------------
 # reviews (Task.review_date, Pending Review)
 # ---------------------------------------------------------------------------
 
@@ -1575,7 +1744,7 @@ def get_review_queue():
 		"Task",
 		filters=[["status", "=", "Pending Review"], ["is_template", "=", 0]],
 		or_filters=[["name", "in", list(assigned_by_me) or [""]], ["owner", "=", user]],
-		fields=TASK_LIST_FIELDS,
+		fields=_task_list_fields(),
 		order_by="review_date asc, exp_end_date asc",
 		limit_page_length=0,
 	)
@@ -1607,7 +1776,7 @@ def get_task_rows(names):
 	if not names:
 		return []
 
-	rows = frappe.get_list("Task", filters={"name": ("in", names)}, fields=TASK_LIST_FIELDS)
+	rows = frappe.get_list("Task", filters={"name": ("in", names)}, fields=_task_list_fields())
 	return _attach_epics(_attach_blocked_state(_attach_comment_counts(_attach_assignees(rows))))
 
 
@@ -1617,7 +1786,7 @@ def get_task_rows(names):
 
 
 @frappe.whitelist()
-def get_notifications(limit: int = 30):
+def get_notifications(limit: int = 30, start: int = 0):
 	"""The current user's inbox, newest first, with enough context to route a click."""
 	user = frappe.session.user
 	logs = frappe.get_all(
@@ -1635,6 +1804,7 @@ def get_notifications(limit: int = 30):
 			"creation",
 		],
 		order_by="creation desc",
+		limit_start=cint(start),
 		limit_page_length=min(cint(limit) or 30, 100),
 	)
 
@@ -1763,7 +1933,7 @@ def bulk_update_tasks(names, values):
 		_attach_blocked_state(
 			_attach_comment_counts(
 				_attach_assignees(
-					frappe.get_list("Task", filters={"name": ("in", updated)}, fields=TASK_LIST_FIELDS)
+					frappe.get_list("Task", filters={"name": ("in", updated)}, fields=_task_list_fields())
 				)
 			)
 		)

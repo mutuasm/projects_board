@@ -52,7 +52,7 @@
       <!-- tree -->
       <template v-if="mode === 'tree'">
         <TaskRow
-          v-for="row in treeRows"
+          v-for="row in paged.slice(treeRows)"
           :key="row.task.name"
           :task="row.task"
           :depth="row.depth"
@@ -66,7 +66,7 @@
 
       <!-- grouped by status, or one flat list -->
       <template v-else>
-        <section v-for="group in groups" :key="group.key" class="mt-1">
+        <section v-for="group in paged.cap(openGroups)" :key="group.key" class="mt-1">
           <button
             v-if="group.key !== '__flat__'"
             class="flex w-full items-center gap-2 rounded px-2 py-2 text-left hover:bg-surface-gray-1"
@@ -79,7 +79,7 @@
             <span class="size-2 shrink-0 rounded-full" :class="group.dot" />
             <span class="truncate text-sm font-medium text-ink-gray-8">{{ group.label }}</span>
             <span class="shrink-0 text-xs tabular-nums text-ink-gray-4">
-              {{ group.tasks.length }}
+              {{ group.total }}
             </span>
           </button>
 
@@ -94,6 +94,8 @@
           </template>
         </section>
       </template>
+
+      <LoadMore v-if="hasMore" @more="paged.more" />
     </div>
 
     <BulkActionBar />
@@ -105,8 +107,10 @@ import { computed, ref, watch } from 'vue'
 import { Button, TabButtons, toast } from 'frappe-ui'
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import LoadMore from '@/components/LoadMore.vue'
 import TaskRow from '@/components/TaskRow.vue'
 import api from '@/data/api'
+import { usePaged } from '@/composables/usePaged'
 import {
   buildTaskTree,
   flattenTree,
@@ -135,6 +139,9 @@ const byPriorityThenDue = (a, b) => {
   return a.name < b.name ? -1 : 1
 }
 
+// 50 rows at a time; a new view or filter starts from the top again
+const paged = usePaged(50, () => [mode.value, visibleTasks.value.length])
+
 const tree = computed(() => buildTaskTree(visibleTasks.value, byPriorityThenDue))
 const treeRows = computed(() => flattenTree(tree.value, collapsed.value))
 
@@ -155,6 +162,18 @@ const groups = computed(() => {
       dot: statusStyle(status).dot,
       tasks,
     }))
+})
+
+/** A collapsed group shows only its header, so its rows don't use up the page. */
+const openGroups = computed(() =>
+  groups.value.map((g) =>
+    collapsed.value.has(g.key) ? { ...g, tasks: [], total: g.tasks.length } : g,
+  ),
+)
+
+const hasMore = computed(() => {
+  if (mode.value === 'tree') return treeRows.value.length > paged.limit.value
+  return openGroups.value.reduce((n, g) => n + g.tasks.length, 0) > paged.limit.value
 })
 
 const allSelected = computed(

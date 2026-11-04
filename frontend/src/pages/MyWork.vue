@@ -165,7 +165,7 @@
           </p>
 
           <div v-else class="flex flex-col gap-5">
-            <section v-for="group in groups" :key="group.key">
+            <section v-for="group in paged.cap(groups)" :key="group.key">
               <h2 class="mb-2 flex items-center gap-2 text-sm font-semibold text-ink-gray-8">
                 <span
                   v-if="group.color"
@@ -185,7 +185,7 @@
                 />
                 {{ group.label }}
                 <span class="text-xs font-normal tabular-nums text-ink-gray-5">
-                  {{ group.tasks.length }}
+                  {{ group.total }}{{ group.key === 'done' && doneHasMore ? '+' : '' }}
                 </span>
               </h2>
 
@@ -212,6 +212,11 @@
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2">
                       <PriorityIcon :priority="task.priority" class="shrink-0" />
+                      <LucideRepeat
+                        v-if="task.auto_repeat"
+                        class="size-3.5 shrink-0 text-ink-gray-5"
+                        aria-label="Repeating task"
+                      />
                       <p
                         class="min-w-0 text-sm leading-snug sm:truncate"
                         :class="
@@ -285,6 +290,12 @@
                 </li>
               </ul>
             </section>
+
+            <LoadMore
+              v-if="hasMoreRows || (includeCompleted && doneHasMore)"
+              :loading="loadingDone"
+              @more="onMore"
+            />
           </div>
         </section>
 
@@ -422,10 +433,12 @@ import AvatarStack from '@/components/AvatarStack.vue'
 import CreateProjectDialog from '@/components/CreateProjectDialog.vue'
 import CreateTaskDialog from '@/components/CreateTaskDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import LoadMore from '@/components/LoadMore.vue'
 import PriorityIcon from '@/components/PriorityIcon.vue'
 import StatTile from '@/components/StatTile.vue'
 import StatusPill from '@/components/StatusPill.vue'
 import api from '@/data/api'
+import { usePaged } from '@/composables/usePaged'
 import { emit as emitBus, EVENTS, on } from '@/data/bus'
 import { batched, onListUpdate } from '@/data/realtime'
 import { loadProjects, projects } from '@/data/projects'
@@ -452,6 +465,12 @@ const search = ref('')
 const showNewTask = ref(false)
 const showNewProject = ref(false)
 const reviews = ref([])
+
+/** Older finished work, fetched 50 at a time while "Show done" is on. */
+const DONE_PAGE = 50
+const doneTasks = ref([])
+const doneHasMore = ref(false)
+const loadingDone = ref(false)
 const reviewing = ref(null)
 
 const groupBy = ref(readPref() || 'due')
@@ -474,11 +493,12 @@ async function load() {
   loading.value = true
   try {
     const [rows, queue] = await Promise.all([
-      api.getMyTasks(includeCompleted.value ? 1 : 0, RECENT_DAYS),
+      api.getMyTasks(0, RECENT_DAYS),
       api.getReviewQueue(),
     ])
     myTasks.value = rows || []
     reviews.value = queue || []
+    if (includeCompleted.value) await loadDone({ reset: true })
   } catch (e) {
     toast.error(e?.messages?.join(', ') || e?.message || 'Could not load your tasks')
   } finally {
@@ -503,6 +523,21 @@ async function signOff(task, status) {
   }
 }
 
+async function loadDone({ reset = false } = {}) {
+  if (loadingDone.value && !reset) return
+  loadingDone.value = true
+  try {
+    const start = reset ? 0 : doneTasks.value.length
+    const page = (await api.getMyDoneTasks(start, DONE_PAGE)) || []
+    doneTasks.value = reset ? page : [...doneTasks.value, ...page]
+    doneHasMore.value = page.length === DONE_PAGE
+  } catch (e) {
+    toast.error(e?.messages?.join(', ') || e?.message || 'Could not load finished tasks')
+  } finally {
+    loadingDone.value = false
+  }
+}
+
 const isDone = (task) => ['Completed', 'Cancelled'].includes(task.status)
 const others = (task) => (task.assignees || []).filter((u) => u.name !== user.value?.name)
 const sharedLabel = (task) =>
@@ -522,10 +557,16 @@ const recentlyCompleted = computed(() => {
     .sort((a, b) => completedAt(b).valueOf() - completedAt(a).valueOf())
 })
 
-/** The list: open work, plus everything finished when "Show done" is on. */
+/** Open work, plus every finished page fetched so far when "Show done" is on. */
+const withDone = computed(() => {
+  if (!includeCompleted.value) return active.value
+  const seen = new Set(myTasks.value.map((t) => t.name))
+  return [...myTasks.value, ...doneTasks.value.filter((t) => !seen.has(t.name))]
+})
+
 const listed = computed(() => {
   const term = search.value.trim().toLowerCase()
-  return (includeCompleted.value ? myTasks.value : active.value).filter(
+  return withDone.value.filter(
     (t) =>
       !term ||
       t.subject.toLowerCase().includes(term) ||
@@ -613,6 +654,18 @@ const groups = computed(() => {
   return out.filter((g) => g.tasks.length)
 })
 
+// 50 rows render at a time; a new grouping or search starts from the top
+const paged = usePaged(50, () => [groupBy.value, search.value, includeCompleted.value])
+const hasMoreRows = computed(
+  () => groups.value.reduce((n, g) => n + g.tasks.length, 0) > paged.limit.value,
+)
+
+/** Show the next rows already in hand; past those, fetch the next finished page. */
+function onMore() {
+  if (hasMoreRows.value) paged.more()
+  else if (includeCompleted.value && doneHasMore.value) loadDone()
+}
+
 /** Projects you have open work in, then ones you are a member of, busiest first. */
 const myProjects = computed(() => {
   const counts = new Map()
@@ -670,7 +723,10 @@ function onProjectCreated(name) {
   router.push({ name: 'Board', params: { project: name } })
 }
 
-watch(includeCompleted, load)
+watch(includeCompleted, (on) => {
+  if (on) loadDone({ reset: true })
+  else doneTasks.value = []
+})
 
 // Changes made elsewhere - the board, another person, the desk - show up here
 // without a refresh. A burst of edits reloads once.

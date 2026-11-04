@@ -311,6 +311,63 @@
                 />
               </div>
 
+              <!-- recurring: a Frappe Auto Repeat series -->
+              <div
+                v-if="permissions.canRepeatTasks || task.repeat"
+                class="col-span-2 min-w-0 sm:col-span-3"
+              >
+                <p class="pb-field-label">Repeats</p>
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <span class="flex min-w-0 items-center gap-1.5 text-sm text-ink-gray-8">
+                    <LucideRepeat class="size-4 shrink-0 text-ink-gray-5" />
+                    <span>{{ repeatText }}</span>
+                  </span>
+
+                  <button
+                    v-if="task.repeat && !task.repeat.is_template"
+                    class="text-sm font-medium text-ink-gray-7 underline underline-offset-2 hover:text-ink-gray-9"
+                    @click="open(task.repeat.reference_document)"
+                  >
+                    Open series
+                  </button>
+
+                  <template v-else-if="task.can_write && permissions.canRepeatTasks">
+                    <Popover placement="bottom-start">
+                      <template #target="{ togglePopover }">
+                        <Button size="sm" @click="startRepeatEdit(togglePopover)">
+                          {{ task.repeat ? 'Edit' : 'Make it repeat' }}
+                        </Button>
+                      </template>
+                      <template #body-main="{ close: closePopover }">
+                        <div class="flex w-80 flex-col gap-3 p-3">
+                          <RepeatEditor v-model="repeatDraft" :anchor="repeatAnchor" />
+                          <ErrorMessage :message="repeatError" />
+                          <div class="flex justify-end gap-2">
+                            <Button @click="closePopover()">Cancel</Button>
+                            <Button
+                              variant="solid"
+                              :loading="savingRepeat"
+                              @click="saveRepeat(closePopover)"
+                            >
+                              Save
+                            </Button>
+                          </div>
+                        </div>
+                      </template>
+                    </Popover>
+                    <Button
+                      v-if="task.repeat"
+                      size="sm"
+                      variant="ghost"
+                      :loading="savingRepeat"
+                      @click="stopRepeat"
+                    >
+                      Stop repeating
+                    </Button>
+                  </template>
+                </div>
+              </div>
+
               <div class="col-span-2 min-w-0 sm:col-span-3">
                 <p class="pb-field-label">Labels</p>
                 <TagInput
@@ -611,6 +668,7 @@ import {
   Badge,
   Button,
   Dropdown,
+  ErrorMessage,
   FormControl,
   LoadingIndicator,
   Popover,
@@ -630,6 +688,7 @@ import TaskAttachments from './TaskAttachments.vue'
 import TaskTimer from './TaskTimer.vue'
 import PriorityIcon from './PriorityIcon.vue'
 import ProgressSlider from './ProgressSlider.vue'
+import RepeatEditor from './RepeatEditor.vue'
 import StatusPill from './StatusPill.vue'
 import UserAvatar from './UserAvatar.vue'
 import api from '@/data/api'
@@ -639,6 +698,7 @@ import { isNarrow } from '@/data/ui'
 import { projectColor, statusStyle } from '@/utils/constants'
 import { dayjs, formatNumber, isOverdue, plainText, timeAgo } from '@/utils/format'
 import { closeTask, escapeTargetsPanel, openTask } from '@/utils/taskPanel'
+import { describeRepeat } from '@/utils/repeat'
 import { watchDoc } from '@/data/realtime'
 
 import LucideMaximize2 from '~icons/lucide/maximize-2'
@@ -689,6 +749,10 @@ const sendHint = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘↵' : 'Ctrl+�
 
 const remoteChanged = ref(false)
 
+const repeatDraft = ref(null)
+const repeatError = ref('')
+const savingRepeat = ref(false)
+
 const taskName = computed(() => route.query.task || null)
 const currentUser = computed(() => user.value?.name)
 const assigneeEmails = computed(() => (task.value?.assignees || []).map((u) => u.name))
@@ -706,6 +770,27 @@ const overdue = computed(() =>
 const hasCommentText = computed(() => Boolean(plainText(newComment.value).trim()))
 
 const isDone = computed(() => task.value?.status === 'Completed')
+
+const repeatAnchor = computed(
+  () =>
+    task.value?.repeat?.start_date ||
+    dateOnly(task.value?.exp_start_date) ||
+    dateOnly(task.value?.exp_end_date),
+)
+
+const repeatText = computed(() => {
+  const r = task.value?.repeat
+  if (!r) return "Doesn't repeat"
+  const rule = describeRepeat(r, r.start_date)
+  if (!r.is_template) {
+    return r.disabled
+      ? `From the series “${r.template_subject}”, which has stopped`
+      : `One occurrence of “${r.template_subject}” · ${rule}`
+  }
+  return r.next_schedule_date
+    ? `${rule} · next copy ${dayjs(r.next_schedule_date).format('D MMM')}`
+    : rule
+})
 
 const reviewHint = computed(() => {
   const t = task.value
@@ -804,6 +889,53 @@ const menuOptions = computed(() => [
 
 function close() {
   closeTask()
+}
+
+function startRepeatEdit(toggle) {
+  const r = task.value?.repeat
+  repeatDraft.value = r
+    ? {
+        frequency: r.frequency,
+        repeat_on_days: [...(r.repeat_on_days || [])],
+        repeat_on_last_day: r.repeat_on_last_day,
+        end_date: r.end_date ? dateOnly(r.end_date) : '',
+      }
+    : null
+  repeatError.value = ''
+  toggle()
+}
+
+async function saveRepeat(closePopover) {
+  if (!repeatDraft.value) {
+    // "Doesn't repeat" chosen in the editor
+    if (task.value.repeat) await stopRepeat()
+    closePopover()
+    return
+  }
+  savingRepeat.value = true
+  repeatError.value = ''
+  try {
+    task.value.repeat = await api.setTaskRepeat(task.value.name, repeatDraft.value)
+    toast.success('Repeat saved')
+    closePopover()
+  } catch (e) {
+    repeatError.value = e?.messages?.join(', ') || e?.message || 'Could not save the repeat'
+  } finally {
+    savingRepeat.value = false
+  }
+}
+
+async function stopRepeat() {
+  savingRepeat.value = true
+  try {
+    await api.stopTaskRepeat(task.value.name)
+    task.value.repeat = null
+    toast.success('Stopped repeating - copies already made stay')
+  } catch (e) {
+    toast.error(e?.messages?.join(', ') || e?.message || 'Could not stop the repeat')
+  } finally {
+    savingRepeat.value = false
+  }
 }
 
 function copyLink() {

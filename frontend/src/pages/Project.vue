@@ -138,7 +138,9 @@
     <BoardFilters v-if="showFilters" class="shrink-0" />
 
     <!-- body -->
-    <div class="min-h-0 flex-1 overflow-hidden">
+    <div
+      class="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)] overflow-hidden"
+    >
       <ErrorState v-if="error" :error="error" />
       <router-view v-else />
     </div>

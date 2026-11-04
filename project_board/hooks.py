@@ -16,6 +16,14 @@ after_install = "project_board.install.after_install"
 after_migrate = "project_board.install.after_migrate"
 before_uninstall = "project_board.install.before_uninstall"
 
+# Recurring tasks: each copy Auto Repeat makes gets its own dates and assignees.
+doc_events = {
+	"Task": {
+		"on_recurring": "project_board.recurring.on_recurring",
+		"after_insert": "project_board.recurring.assign_recurring_copy",
+	},
+}
+
 # Website
 # -------
 website_route_rules = [

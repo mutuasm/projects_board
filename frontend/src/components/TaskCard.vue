@@ -22,6 +22,9 @@
         v-if="task.is_milestone"
         class="mt-0.5 size-3.5 shrink-0 text-ink-amber-3"
       />
+      <Tooltip v-if="task.auto_repeat" text="Repeating task">
+        <LucideRepeat class="mt-0.5 size-3.5 shrink-0 text-ink-gray-5" />
+      </Tooltip>
       <p class="flex-1 text-sm leading-snug text-ink-gray-8">{{ task.subject }}</p>
       <Tooltip v-if="isTiming" text="Timer running on this task">
         <span class="relative mt-1 flex size-2 shrink-0">

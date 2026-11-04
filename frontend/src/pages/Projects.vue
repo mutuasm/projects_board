@@ -84,7 +84,7 @@
         class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
       >
         <router-link
-          v-for="project in filtered"
+          v-for="project in paged.slice(filtered)"
           :key="project.name"
           :to="{ name: 'Board', params: { project: project.name } }"
           class="pb-card flex flex-col gap-3 !rounded-xl p-4"
@@ -170,7 +170,7 @@
           </thead>
           <tbody>
             <tr
-              v-for="project in filtered"
+              v-for="project in paged.slice(filtered)"
               :key="project.name"
               class="cursor-pointer border-t border-outline-gray-1 bg-surface-white hover:bg-surface-gray-1"
               @click="$router.push({ name: 'Board', params: { project: project.name } })"
@@ -229,6 +229,8 @@
           </tbody>
         </table>
       </div>
+
+      <LoadMore v-if="filtered.length > paged.limit.value" @more="paged.more" />
     </div>
 
     <CreateProjectDialog v-model="showNew" @created="onCreated" />
@@ -248,6 +250,8 @@ import { isNarrow } from '@/data/ui'
 import { permissions, projectStatuses } from '@/data/session'
 import { PROJECT_STATUS_STYLES, projectColor } from '@/utils/constants'
 import { formatDate, isOverdue } from '@/utils/format'
+import LoadMore from '@/components/LoadMore.vue'
+import { usePaged } from '@/composables/usePaged'
 
 const router = useRouter()
 const search = ref('')
@@ -278,6 +282,9 @@ const filtered = computed(() => {
     return true
   })
 })
+
+// 40 at a time; a new search, filter or layout starts from the top
+const paged = usePaged(40, () => [search.value, statusFilter.value, layout.value])
 
 watch(layout, (value) => localStorage.setItem('pb:projects-layout', value))
 

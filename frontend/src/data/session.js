@@ -18,6 +18,7 @@ export const permissions = computed(() => ({
   canCreateTask: session.boot.data?.can_create_task ?? false,
   canSubmitTimesheet: session.boot.data?.can_submit_timesheet ?? false,
   canPostUpdate: session.boot.data?.can_post_update ?? false,
+  canRepeatTasks: session.boot.data?.can_repeat_tasks ?? false,
   isManager: session.boot.data?.is_manager ?? false,
 }))
 

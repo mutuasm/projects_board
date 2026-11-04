@@ -64,6 +64,13 @@
           />
         </div>
 
+        <!-- a Frappe Auto Repeat series, with this task as its first occurrence -->
+        <RepeatEditor
+          v-if="permissions.canRepeatTasks"
+          v-model="form.repeat"
+          :anchor="form.exp_start_date || form.exp_end_date"
+        />
+
         <div>
           <label class="mb-1.5 block text-xs text-ink-gray-5">Assignees</label>
           <AssigneeSelect v-model="form.assignees" />
@@ -109,10 +116,11 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { Button, Dialog, ErrorMessage, FormControl, TextEditor } from 'frappe-ui'
 import AssigneeSelect from './AssigneeSelect.vue'
 import NullableSelect from './NullableSelect.vue'
+import RepeatEditor from './RepeatEditor.vue'
 import api from '@/data/api'
 import { tasks } from '@/data/board'
 import { projects } from '@/data/projects'
-import { boardStatuses, taskPriorities, taskTypes, user } from '@/data/session'
+import { boardStatuses, permissions, taskPriorities, taskTypes, user } from '@/data/session'
 import { statusStyle } from '@/utils/constants'
 
 const props = defineProps({
@@ -145,6 +153,7 @@ function blankForm() {
     exp_end_date: '',
     assignees: [],
     project: '',
+    repeat: null,
     parent_task: props.defaultParent || '',
     is_milestone: false,
     color: '#3b82f6',
@@ -212,6 +221,7 @@ async function submit() {
       // only epics carry a colour; it is what tints their chip on every card
       color: form.value.is_group ? form.value.color : '',
       task_weight: form.value.task_weight || 0,
+      repeat: form.value.repeat ? JSON.stringify(form.value.repeat) : '',
     }
     const task = await api.createTask(payload)
     emit('created', task)

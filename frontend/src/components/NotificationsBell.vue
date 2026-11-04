@@ -73,6 +73,12 @@
             />
           </button>
 
+          <LoadMore
+            v-if="hasMoreNotifications"
+            :loading="loadingNotifications"
+            @more="loadMoreNotifications"
+          />
+
           <div
             v-if="!notifications.length"
             class="flex flex-col items-center gap-1 px-6 py-10 text-center"
@@ -93,8 +99,18 @@
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Popover } from 'frappe-ui'
+import LoadMore from './LoadMore.vue'
 import UserAvatar from './UserAvatar.vue'
-import { markAllRead, markRead, notifications, startNotifications, unread } from '@/data/notifications'
+import {
+  hasMoreNotifications,
+  loadingNotifications,
+  loadMoreNotifications,
+  markAllRead,
+  markRead,
+  notifications,
+  startNotifications,
+  unread,
+} from '@/data/notifications'
 import { connected } from '@/data/realtime'
 import { plainText, timeAgo } from '@/utils/format'
 

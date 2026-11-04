@@ -4,7 +4,9 @@
       <AppSidebar />
       <main class="flex min-w-0 flex-1 flex-col overflow-hidden">
         <TopBar />
-        <div class="min-h-0 flex-1">
+        <!-- a grid row (not a percentage height) so every page gets a definite
+             height to scroll inside, in every browser -->
+        <div class="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)]">
           <router-view />
         </div>
       </main>
