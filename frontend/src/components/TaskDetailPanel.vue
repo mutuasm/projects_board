@@ -427,10 +427,10 @@
               />
             </section>
 
-            <!-- child issues -->
+            <!-- child tasks -->
             <section v-if="task.subtasks?.length || task.is_group">
               <div class="mb-2 flex items-center gap-2">
-                <h3 class="pb-section-title !mb-0">Child issues</h3>
+                <h3 class="pb-section-title !mb-0">Child tasks</h3>
                 <span
                   v-if="task.subtask_progress?.total"
                   class="text-xs tabular-nums text-ink-gray-5"
@@ -454,7 +454,7 @@
                   @click="showSubtask = true"
                 >
                   <template #prefix><LucidePlus class="size-3.5" /></template>
-                  Add
+                  Add child task
                 </Button>
               </div>
               <ul class="flex flex-col divide-y divide-outline-gray-1">
@@ -471,7 +471,7 @@
                   <AvatarStack :users="sub.assignees || []" :max="2" size="xs" />
                 </li>
                 <li v-if="!task.subtasks?.length" class="py-2 text-xs text-ink-gray-4">
-                  Nothing under this epic yet.
+                  No child tasks yet.
                 </li>
               </ul>
             </section>

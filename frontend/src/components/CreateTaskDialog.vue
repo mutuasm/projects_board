@@ -1,7 +1,7 @@
 <template>
   <Dialog
     v-model="show"
-    :options="{ title: defaultIsGroup ? 'New epic' : 'New task', size: 'xl' }"
+    :options="{ title: dialogTitle, size: 'xl' }"
   >
     <template #body-content>
       <div class="thin-scrollbar flex max-h-[70vh] flex-col gap-3 overflow-y-auto sm:max-h-none sm:overflow-visible">
@@ -21,6 +21,19 @@
           label="Project"
           :options="projectOptions"
         />
+
+        <!-- only epics (group tasks) can hold other tasks; ERPNext enforces it on save -->
+        <div v-if="targetProject">
+          <NullableSelect
+            v-model="form.parent_task"
+            label="Parent task"
+            :options="parentOptions"
+            :disabled="loadingParents"
+          />
+          <p v-if="!loadingParents && !openEpics.length" class="mt-1 text-xs text-ink-gray-5">
+            This project has no epics yet. Tick "Epic" on a task to group others under it.
+          </p>
+        </div>
 
         <div>
           <label class="mb-1.5 block text-xs text-ink-gray-5">Description</label>
@@ -95,16 +108,9 @@
           <AssigneeSelect v-model="form.assignees" />
         </div>
 
-        <NullableSelect
-          v-if="project && groupTaskOptions.length > 1"
-          v-model="form.parent_task"
-          label="Epic"
-          :options="groupTaskOptions"
-        />
-
         <div class="flex flex-wrap items-center gap-4">
           <FormControl v-model="form.is_milestone" type="checkbox" label="Milestone" />
-          <FormControl v-model="form.is_group" type="checkbox" label="Epic (can hold subtasks)" />
+          <FormControl v-model="form.is_group" type="checkbox" label="Epic (can hold child tasks)" />
           <label v-if="form.is_group" class="flex items-center gap-2 text-sm text-ink-gray-7">
             Colour
             <input
@@ -137,7 +143,6 @@ import AssigneeSelect from './AssigneeSelect.vue'
 import NullableSelect from './NullableSelect.vue'
 import RepeatEditor from './RepeatEditor.vue'
 import api from '@/data/api'
-import { tasks } from '@/data/board'
 import { projects } from '@/data/projects'
 import {
   boardStatuses,
@@ -224,16 +229,57 @@ const projectOptions = computed(() => [
     .map((p) => ({ label: p.project_name, value: p.name })),
 ])
 
-/**
- * Only group tasks can be a parent - ERPNext enforces this on save. The board
- * store holds the last project visited, so make sure the epics are this one's.
- */
-const groupTaskOptions = computed(() => [
-  { label: 'No epic', value: '' },
-  ...tasks.value
-    .filter((t) => t.is_group && t.project === props.project)
-    .map((t) => ({ label: t.subject, value: t.name })),
+const dialogTitle = computed(() => {
+  if (props.defaultIsGroup) return 'New epic'
+  return props.defaultParent ? 'New child task' : 'New task'
+})
+
+/** The project the task will land in: fixed by the page, or picked in the form. */
+const targetProject = computed(() => props.project || form.value.project || '')
+
+// Fetched rather than read from the board store, which only holds the project
+// last opened and is empty when the dialog is opened from My Work.
+const epics = ref([])
+const loadingParents = ref(false)
+let epicsRequest = 0
+
+async function loadParents(project) {
+  const request = ++epicsRequest
+  epics.value = []
+  if (!project) return
+  loadingParents.value = true
+  try {
+    const rows = (await api.getProjectEpics(project)) || []
+    if (request === epicsRequest) epics.value = rows
+  } catch {
+    // no list to pick from; the task can still be created at the top level
+  } finally {
+    if (request === epicsRequest) loadingParents.value = false
+  }
+}
+
+// ERPNext won't put an open task under a completed parent, so closed epics are
+// left out - except the one the dialog was opened from, which stays selectable.
+const openEpics = computed(() =>
+  epics.value.filter(
+    (e) => !['Completed', 'Cancelled'].includes(e.status) || e.name === props.defaultParent,
+  ),
+)
+
+const parentOptions = computed(() => [
+  { label: 'None (top level)', value: '' },
+  ...openEpics.value.map((e) => ({ label: e.subject, value: e.name })),
 ])
+
+watch(
+  () => [show.value, targetProject.value],
+  ([open, project], previous) => {
+    if (!open) return
+    // a different project has different epics
+    if (previous?.[0] && previous[1] !== project) form.value.parent_task = ''
+    loadParents(project)
+  },
+)
 
 watch(show, async (open) => {
   if (!open) return

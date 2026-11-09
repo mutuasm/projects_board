@@ -66,7 +66,7 @@
       <span
         v-if="hasChildren"
         class="shrink-0 rounded bg-surface-gray-2 px-1.5 text-[11px] tabular-nums text-ink-gray-6"
-        :title="`${childCount} child issues`"
+        :title="`${childCount} child ${childCount === 1 ? 'task' : 'tasks'}`"
       >
         {{ childCount }}
       </span>

@@ -171,6 +171,13 @@
       :project="project"
       @closed="onClosed"
     />
+
+    <RenameProjectDialog
+      v-model="showRename"
+      :project="project"
+      :current-name="doc?.project_name || ''"
+      @renamed="onRenamed"
+    />
   </div>
 </template>
 
@@ -184,6 +191,7 @@ import AvatarStack from '@/components/AvatarStack.vue'
 import BoardFilters from '@/components/BoardFilters.vue'
 import CloseProjectDialog from '@/components/CloseProjectDialog.vue'
 import CreateTaskDialog from '@/components/CreateTaskDialog.vue'
+import RenameProjectDialog from '@/components/RenameProjectDialog.vue'
 import ErrorState from '@/components/ErrorState.vue'
 import {
   canEditProject,
@@ -214,6 +222,7 @@ const route = useRoute()
 const router = useRouter()
 const showNewTask = ref(false)
 const showClose = ref(false)
+const showRename = ref(false)
 const reopening = ref(false)
 const holding = ref(false)
 
@@ -269,7 +278,12 @@ const projectMenu = computed(() => [
     icon: 'refresh-cw',
     onClick: () => loadProject(props.project, { force: true }),
   },
-  ...(canEditProject.value && doc.value ? statusActions.value : []),
+  ...(canEditProject.value && doc.value
+    ? [
+        { label: 'Rename project', icon: 'pencil', onClick: () => (showRename.value = true) },
+        ...statusActions.value,
+      ]
+    : []),
 ])
 
 const statusActions = computed(() => {
@@ -288,6 +302,13 @@ async function onClosed({ doc: updated, cancelOpenTasks }) {
   // the sidebar only lists open projects
   loadProjects({ force: true })
   if (cancelOpenTasks) await Promise.all([reloadTasks(), loadEpics(props.project)])
+}
+
+function onRenamed(updated) {
+  doc.value = updated
+  toast.success('Project renamed')
+  // the sidebar, switcher and palette list projects by name
+  loadProjects({ force: true })
 }
 
 // ERPNext leaves On hold alone when it recomputes a project's status from its

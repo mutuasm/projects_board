@@ -18,6 +18,7 @@
       </button>
 
       <NotificationsBell class="ml-auto" />
+      <AppSwitcher />
 
       <a
         href="/desk"
@@ -33,6 +34,7 @@
 </template>
 
 <script setup>
+import AppSwitcher from './AppSwitcher.vue'
 import NotificationsBell from './NotificationsBell.vue'
 import SidebarToggle from './SidebarToggle.vue'
 import { paletteOpen } from '@/composables/useShortcuts'

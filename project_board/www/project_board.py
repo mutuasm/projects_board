@@ -1,4 +1,5 @@
 import json
+from urllib.parse import urlencode
 
 import frappe
 from frappe.boot import load_translations
@@ -7,6 +8,13 @@ no_cache = 1
 
 
 def get_context(context):
+	# Guests would get the page shell and then a wall of failed API calls, so
+	# send them to log in first and bring them back to the page they asked for.
+	if frappe.session.user == "Guest":
+		target = frappe.request.full_path.rstrip("?") if frappe.request else "/project-board"
+		frappe.local.flags.redirect_location = "/login?" + urlencode({"redirect-to": target})
+		raise frappe.Redirect(302)  # not 301: browsers cache those, and this one is temporary
+
 	context = frappe._dict()
 	context.boot = get_boot()
 	return context

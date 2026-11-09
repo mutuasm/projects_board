@@ -1,12 +1,13 @@
 import { computed, reactive } from 'vue'
-import { createResource } from 'frappe-ui'
+import { call, createResource, deleteLocal } from 'frappe-ui'
 
 const API = 'project_board.api'
+const BOOT_CACHE = 'pb:boot'
 
 export const session = reactive({
   boot: createResource({
     url: `${API}.get_boot_info`,
-    cache: 'pb:boot',
+    cache: BOOT_CACHE,
     auto: false,
   }),
 })
@@ -32,6 +33,21 @@ export const projectTypes = computed(() => options.value.project_types || [])
 export const activityTypes = computed(() => options.value.activity_types || [])
 export const departments = computed(() => options.value.departments || [])
 
-export function logout() {
-  window.location.href = '/api/method/logout'
+let loggingOut = false
+
+/**
+ * Frappe only accepts logout as a POST (with the CSRF token), so a plain link
+ * to /api/method/logout is refused. The cached boot holds this user's details
+ * and goes too, so the next person on this browser never sees them.
+ */
+export async function logout() {
+  if (loggingOut) return
+  loggingOut = true
+  try {
+    await call('logout')
+  } catch {
+    // an expired session is already logged out; the login page sorts out the rest
+  }
+  await deleteLocal(JSON.stringify([BOOT_CACHE])).catch(() => {})
+  window.location.href = '/login?redirect-to=/project-board'
 }
