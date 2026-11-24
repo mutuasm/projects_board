@@ -234,9 +234,7 @@ body {
 }
 /* the slot a card will drop into: an outline, not a floating card */
 .task-ghost.pb-card {
-  box-shadow: none;
-  outline: 1.5px dashed theme('colors.gray.300');
-  transform: none;
+  @apply border-dashed border-outline-gray-4;
 }
 .task-drag {
   @apply rotate-1;
@@ -245,73 +243,25 @@ body {
 
 @layer components {
   /*
-   * Cards sit on the page with a soft shadow instead of a border, lift a
-   * little under the pointer and settle when pressed. Panels keep the hairline.
+   * Cards are outlined, as in Frappe CRM: a hairline border and no shadow.
+   * The border tokens follow the theme, so dark mode needs nothing extra.
+   * Clickable cards firm up their border under the pointer.
    */
   .pb-card {
-    @apply rounded-lg bg-surface-white;
-    box-shadow:
-      0 1px 2px rgb(16 24 40 / 0.05),
-      0 1px 3px rgb(16 24 40 / 0.08);
-    transition:
-      box-shadow 180ms ease,
-      transform 180ms ease;
+    @apply rounded-lg border border-outline-gray-2 bg-surface-white;
+    transition: border-color 150ms ease;
   }
   .pb-card:hover {
-    box-shadow:
-      0 2px 4px rgb(16 24 40 / 0.05),
-      0 8px 20px rgb(16 24 40 / 0.09);
-    transform: translateY(-1px);
-  }
-  .pb-card:active {
-    transform: translateY(0) scale(0.995);
-    transition-duration: 80ms;
+    @apply border-outline-gray-3;
   }
   .pb-card-selected,
   .pb-card-selected:hover {
-    box-shadow:
-      0 0 0 2px theme('colors.gray.400'),
-      0 8px 20px rgb(16 24 40 / 0.09);
+    @apply border-outline-gray-5 ring-1 ring-outline-gray-5;
   }
 
-  /* a shadow vanishes on a dark ground, so a faint light edge stands in */
-  [data-theme='dark'] .pb-card {
-    box-shadow:
-      0 0 0 1px rgb(255 255 255 / 0.06),
-      0 1px 3px rgb(0 0 0 / 0.5);
-  }
-  [data-theme='dark'] .pb-card:hover {
-    box-shadow:
-      0 0 0 1px rgb(255 255 255 / 0.1),
-      0 8px 20px rgb(0 0 0 / 0.55);
-  }
-  [data-theme='dark'] .pb-card-selected {
-    box-shadow:
-      0 0 0 2px theme('colors.gray.500'),
-      0 8px 20px rgb(0 0 0 / 0.55);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .pb-card {
-      transition: box-shadow 180ms ease;
-    }
-    .pb-card:hover,
-    .pb-card:active {
-      transform: none;
-    }
-  }
-
-  /* the same surface for cards that are not clickable: shadow, no lift */
+  /* the same surface for cards that are not clickable */
   .pb-panel {
-    @apply rounded-xl bg-surface-white;
-    box-shadow:
-      0 1px 2px rgb(16 24 40 / 0.05),
-      0 1px 3px rgb(16 24 40 / 0.08);
-  }
-  [data-theme='dark'] .pb-panel {
-    box-shadow:
-      0 0 0 1px rgb(255 255 255 / 0.06),
-      0 1px 3px rgb(0 0 0 / 0.5);
+    @apply rounded-lg border border-outline-gray-2 bg-surface-white;
   }
 
   /* Quiet, borderless input that only shows structure on focus. */

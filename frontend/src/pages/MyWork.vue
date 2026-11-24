@@ -1,37 +1,21 @@
 <template>
-  <div class="thin-scrollbar h-full overflow-y-auto">
+  <div class="flex h-full min-h-0 flex-col">
+    <PageHeader title="My Work">
+      <template #actions>
+        <Button v-if="permissions.canCreateProject" @click="showNewProject = true">
+          <template #prefix><LucideFolderPlus class="size-4" /></template>
+          <span class="hidden sm:inline">New project</span>
+        </Button>
+        <Button v-if="permissions.canCreateTask" variant="solid" @click="showNewTask = true">
+          <template #prefix><LucidePlus class="size-4" /></template>
+          <span class="hidden sm:inline">New task</span>
+        </Button>
+      </template>
+    </PageHeader>
+
+    <div class="thin-scrollbar min-h-0 flex-1 overflow-y-auto">
     <div class="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-5 pb-safe-bottom sm:px-6 sm:py-6">
-      <!-- greeting -->
-      <header class="flex flex-wrap items-end gap-x-3 gap-y-3">
-        <div class="min-w-0">
-          <p class="text-sm text-ink-gray-5">{{ todayLabel }}</p>
-          <h1
-            class="mt-0.5 truncate text-xl font-semibold tracking-tight text-ink-gray-9 sm:text-[26px] sm:leading-9"
-          >
-            {{ greeting }}, {{ firstName }}
-          </h1>
-          <p class="mt-0.5 text-sm text-ink-gray-6">{{ summaryLine }}</p>
-        </div>
-        <div class="flex w-full shrink-0 items-center gap-2 sm:ml-auto sm:w-auto">
-          <Button
-            v-if="permissions.canCreateProject"
-            class="flex-1 sm:flex-none"
-            @click="showNewProject = true"
-          >
-            <template #prefix><LucideFolderPlus class="size-4" /></template>
-            New project
-          </Button>
-          <Button
-            v-if="permissions.canCreateTask"
-            variant="solid"
-            class="flex-1 sm:flex-none"
-            @click="showNewTask = true"
-          >
-            <template #prefix><LucidePlus class="size-4" /></template>
-            New task
-          </Button>
-        </div>
-      </header>
+      <p class="text-base text-ink-gray-5">{{ todayLabel }} · {{ summaryLine }}</p>
 
       <!-- headline numbers -->
       <div class="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
@@ -419,6 +403,7 @@
         </aside>
       </div>
     </div>
+    </div>
 
     <CreateTaskDialog v-model="showNewTask" @created="load" />
     <CreateProjectDialog v-model="showNewProject" @created="onProjectCreated" />
@@ -430,6 +415,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Badge, Button, LoadingIndicator, TabButtons, Tooltip, toast } from 'frappe-ui'
 import AvatarStack from '@/components/AvatarStack.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import CreateProjectDialog from '@/components/CreateProjectDialog.vue'
 import CreateTaskDialog from '@/components/CreateTaskDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -684,11 +670,6 @@ const myProjects = computed(() => {
     .slice(0, 6)
 })
 
-const firstName = computed(() => (user.value?.full_name || 'there').split(' ')[0])
-const greeting = computed(() => {
-  const hour = dayjs().hour()
-  return hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
-})
 const todayLabel = dayjs().format('dddd, D MMMM')
 
 const summaryLine = computed(() => {

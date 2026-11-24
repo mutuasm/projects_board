@@ -1,19 +1,22 @@
 <template>
-  <Popover placement="bottom-end">
-    <template #target="{ togglePopover }">
-      <button
-        class="relative grid size-9 shrink-0 place-items-center rounded-lg border border-outline-gray-2 text-ink-gray-7 transition-colors hover:bg-surface-gray-2"
-        :aria-label="unread ? `Notifications, ${unread} unread` : 'Notifications'"
-        @click="togglePopover()"
-      >
-        <LucideBell class="size-4" />
-        <span
-          v-if="unread"
-          class="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-semibold tabular-nums text-white"
+  <Popover :placement="placement">
+    <template #target="{ togglePopover, isOpen }">
+      <!-- the sidebar brings its own trigger; the bell is the default -->
+      <slot name="target" v-bind="{ togglePopover, isOpen, unread }">
+        <button
+          class="relative grid size-9 shrink-0 place-items-center rounded-lg border border-outline-gray-2 text-ink-gray-7 transition-colors hover:bg-surface-gray-2"
+          :aria-label="unread ? `Notifications, ${unread} unread` : 'Notifications'"
+          @click="togglePopover()"
         >
-          {{ unread > 99 ? '99+' : unread }}
-        </span>
-      </button>
+          <LucideBell class="size-4" />
+          <span
+            v-if="unread"
+            class="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[10px] font-semibold tabular-nums text-white"
+          >
+            {{ unread > 99 ? '99+' : unread }}
+          </span>
+        </button>
+      </slot>
     </template>
 
     <template #body-main="{ close }">
@@ -119,6 +122,8 @@ import LucideUserPlus from '~icons/lucide/user-plus'
 import LucideMessageSquare from '~icons/lucide/message-square'
 import LucideShare2 from '~icons/lucide/share-2'
 import LucideBell from '~icons/lucide/bell'
+
+defineProps({ placement: { type: String, default: 'bottom-end' } })
 
 const router = useRouter()
 

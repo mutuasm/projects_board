@@ -160,6 +160,7 @@ const props = defineProps({
   defaultStatus: { type: String, default: 'Open' },
   defaultParent: { type: String, default: null },
   defaultIsGroup: { type: Boolean, default: false },
+  defaultMilestone: { type: Boolean, default: false },
 })
 const emit = defineEmits(['update:modelValue', 'created'])
 
@@ -202,7 +203,7 @@ function blankForm() {
     project: '',
     repeat: null,
     parent_task: props.defaultParent || '',
-    is_milestone: false,
+    is_milestone: props.defaultMilestone || false,
     color: '#3b82f6',
     is_group: props.defaultIsGroup || false,
   }
@@ -231,6 +232,7 @@ const projectOptions = computed(() => [
 
 const dialogTitle = computed(() => {
   if (props.defaultIsGroup) return 'New epic'
+  if (props.defaultMilestone) return 'New milestone'
   return props.defaultParent ? 'New child task' : 'New task'
 })
 

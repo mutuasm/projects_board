@@ -36,7 +36,7 @@ export function useShortcuts(handlers = {}) {
 
     // two-key chords, Gmail style: "g" then "p"
     if (chord === 'g') {
-      const target = { p: 'goProjects', w: 'goMyWork', b: 'goBoard' }[event.key.toLowerCase()]
+      const target = { h: 'goHome', p: 'goProjects', w: 'goMyWork', b: 'goBoard' }[event.key.toLowerCase()]
       resetChord()
       if (target && handlers[target]) {
         event.preventDefault()

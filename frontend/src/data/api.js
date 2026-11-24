@@ -1,6 +1,7 @@
 import { call } from 'frappe-ui'
 
 const NS = 'project_board.api'
+const HOME = 'project_board.home'
 
 export const api = {
   // projects
@@ -102,6 +103,12 @@ export const api = {
   // time
   logTime: (payload) => call(`${NS}.log_time`, payload),
   getTimeLogs: (task) => call(`${NS}.get_time_logs`, { task }),
+
+  // home
+  getBrief: (scope, project) => call(`${HOME}.get_brief`, { scope, project: project || null }),
+  getTeamWorkload: (period, project) =>
+    call(`${HOME}.get_team_workload`, { period, project: project || null }),
+  getMilestones: (project) => call(`${HOME}.get_milestones`, { project: project || null }),
 }
 
 export default api

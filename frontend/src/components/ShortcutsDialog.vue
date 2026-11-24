@@ -35,6 +35,7 @@ const shortcuts = [
   { keys: ['⌘', 'K'], label: 'Open the command palette' },
   { keys: ['/'], label: 'Focus search' },
   { keys: ['C'], label: 'Create a task' },
+  { keys: ['G', 'H'], label: 'Go to Home' },
   { keys: ['G', 'W'], label: 'Go to My Work' },
   { keys: ['G', 'P'], label: 'Go to Projects' },
   { keys: ['Esc'], label: 'Close the panel or dialog' },

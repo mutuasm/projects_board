@@ -17,155 +17,170 @@
     class="flex h-full shrink-0 flex-col border-r border-outline-gray-2 bg-surface-menu-bar pb-safe-bottom pl-safe-left pt-safe-top transition-transform duration-200 lg:translate-x-0 lg:transition-all"
     :class="[
       // phone/tablet: an overlay drawer that slides in from the left
-      'fixed inset-y-0 left-0 z-50 w-72 lg:static lg:z-auto lg:shadow-none',
+      'fixed inset-y-0 left-0 z-50 w-64 lg:static lg:z-auto lg:shadow-none',
       sidebarOpen ? 'translate-x-0 shadow-lg' : '-translate-x-full',
-      collapsed ? 'lg:w-16' : 'lg:w-64',
+      collapsed ? 'lg:w-14' : 'lg:w-60',
     ]"
   >
-    <!-- brand -->
-    <div class="flex items-center gap-2 px-4 pb-4 pt-4" :class="iconsOnly ? 'justify-center px-2' : ''">
-      <router-link
-        :to="{ name: 'MyWork' }"
-        class="truncate text-[19px] font-semibold tracking-[-0.02em] text-ink-gray-9"
-        :title="iconsOnly ? 'Project Board' : undefined"
-      >
-        {{ iconsOnly ? 'P' : 'Project Board' }}
-      </router-link>
+    <!-- brand: who this workspace belongs to and who is signed in; the menu
+         holds the other apps, the theme and logging out, as in Frappe CRM -->
+    <div class="flex items-center gap-1 p-2">
+      <div class="min-w-0 flex-1">
+        <Dropdown :options="brandMenu" placement="left">
+          <template #default="{ open }">
+            <button
+              class="flex w-full min-w-0 items-center gap-2 rounded-lg p-1.5 text-left transition-colors hover:bg-surface-gray-2"
+              :class="[open && '!bg-surface-white shadow-sm', iconsOnly && 'justify-center']"
+              :title="iconsOnly ? brand.name : undefined"
+            >
+              <img
+                v-if="brandLogo"
+                :src="brandLogo"
+                alt=""
+                class="size-8 shrink-0 rounded-full object-cover"
+                @error="logoFailed = true"
+              />
+              <span
+                v-else
+                class="grid size-8 shrink-0 place-items-center rounded-full bg-surface-gray-7 text-sm font-semibold text-ink-white"
+              >
+                {{ initials(brand.name) }}
+              </span>
+              <span v-if="!iconsOnly" class="min-w-0 flex-1 leading-tight">
+                <span class="block truncate text-base font-medium text-ink-gray-9">{{ brand.name }}</span>
+                <span class="block truncate text-sm text-ink-gray-6">{{ user.full_name }}</span>
+              </span>
+              <LucideChevronDown v-if="!iconsOnly" class="size-4 shrink-0 text-ink-gray-5" />
+            </button>
+          </template>
+        </Dropdown>
+      </div>
 
-      <!-- close on mobile, collapse on desktop -->
       <button
-        class="tap-target ml-auto grid place-items-center rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2 lg:hidden"
+        class="tap-target grid shrink-0 place-items-center rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2 lg:hidden"
         aria-label="Close navigation"
         @click="closeSidebar"
       >
         <LucideX class="size-5" />
       </button>
-      <button
-        v-if="!iconsOnly"
-        class="ml-auto hidden rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2 lg:block"
-        title="Collapse"
-        @click="toggleCollapsed"
-      >
-        <LucidePanelLeft class="size-4" />
-      </button>
     </div>
 
     <!-- primary nav -->
-    <nav class="flex flex-col gap-1 px-3" :class="iconsOnly ? 'px-2' : ''">
-      <button
-        v-if="iconsOnly"
-        class="mb-1 hidden place-items-center rounded-lg py-2 text-ink-gray-5 hover:bg-surface-gray-2 lg:grid"
-        title="Expand"
-        @click="toggleCollapsed"
+    <nav class="flex flex-col gap-0.5 px-2">
+      <SidebarLink
+        label="Search"
+        :shortcut="searchShortcut"
+        :collapsed="iconsOnly"
+        @click="openSearch"
       >
-        <LucidePanelLeft class="size-4" />
-      </button>
+        <LucideSearch class="size-4" />
+      </SidebarLink>
+
+      <NotificationsBell placement="right-start" class="w-full">
+        <template #target="{ togglePopover, isOpen, unread }">
+          <SidebarLink
+            label="Notifications"
+            :badge="unread"
+            :active="isOpen"
+            :collapsed="iconsOnly"
+            @click="togglePopover()"
+          >
+            <LucideBell class="size-4" />
+          </SidebarLink>
+        </template>
+      </NotificationsBell>
+
+      <SidebarLink :to="{ name: 'Home' }" label="Home" :collapsed="iconsOnly">
+        <LucideHome class="size-4" />
+      </SidebarLink>
       <SidebarLink :to="{ name: 'MyWork' }" label="My Work" :collapsed="iconsOnly">
-        <LucideLayoutDashboard class="size-[18px]" />
+        <LucideListChecks class="size-4" />
       </SidebarLink>
       <SidebarLink :to="{ name: 'Projects' }" label="Projects" :collapsed="iconsOnly">
-        <LucideFolderKanban class="size-[18px]" />
+        <LucideFolderKanban class="size-4" />
       </SidebarLink>
     </nav>
 
-    <!-- project list -->
-    <div
-      v-if="!iconsOnly"
-      class="mt-5 flex min-h-0 flex-1 flex-col border-t border-outline-gray-2 px-3 pt-4"
-    >
-      <div class="flex items-center justify-between px-2.5 pb-1.5">
-        <span class="text-[15px] text-ink-gray-6">Projects</span>
+    <!-- open projects, collapsible like CRM's view sections -->
+    <div v-if="!iconsOnly" class="mt-4 flex min-h-0 flex-1 flex-col px-2">
+      <div class="group flex h-7 items-center gap-1 px-2">
+        <button
+          class="flex min-w-0 flex-1 items-center gap-1.5 text-sm text-ink-gray-5 hover:text-ink-gray-7"
+          :aria-expanded="showProjects"
+          @click="toggleProjects"
+        >
+          <LucideChevronRight
+            class="size-3.5 shrink-0 transition-transform"
+            :class="showProjects && 'rotate-90'"
+          />
+          <span class="truncate">Projects</span>
+        </button>
         <button
           v-if="permissions.canCreateProject"
-          class="tap-target grid place-items-center rounded p-1 text-ink-gray-6 hover:bg-surface-gray-2"
+          class="grid place-items-center rounded p-0.5 text-ink-gray-5 opacity-100 hover:bg-surface-gray-3 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100"
           title="New project"
+          aria-label="New project"
           @click="showNewProject = true"
         >
-          <LucidePlus class="size-4" />
+          <LucidePlus class="size-3.5" />
         </button>
       </div>
 
-      <div class="thin-scrollbar flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
+      <div
+        v-show="showProjects"
+        class="thin-scrollbar flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pb-2"
+      >
         <router-link
           v-for="project in recentProjects"
           :key="project.name"
           :to="{ name: 'Board', params: { project: project.name } }"
-          class="flex items-center gap-3 rounded-lg border border-transparent px-2.5 py-2 text-[15px] text-ink-gray-7 hover:bg-surface-gray-2"
+          class="flex h-8 shrink-0 items-center gap-2 rounded-md px-2 text-base text-ink-gray-7 transition-colors hover:bg-surface-gray-2"
           :class="
-            route.params.project === project.name
-              ? '!border-outline-gray-2 !bg-surface-white font-medium text-ink-gray-9 shadow-sm'
-              : ''
+            route.params.project === project.name &&
+            '!bg-surface-white font-medium !text-ink-gray-9 shadow-sm'
           "
         >
-          <span
-            class="size-3.5 shrink-0 rounded-[4px]"
-            :style="{ backgroundColor: projectColor(project.name) }"
-          />
-          <span class="truncate">{{ project.project_name }}</span>
+          <span class="grid size-4 shrink-0 place-items-center">
+            <span
+              class="size-2.5 rounded-[3px]"
+              :style="{ backgroundColor: projectColor(project.name) }"
+            />
+          </span>
+          <span class="flex-1 truncate">{{ project.project_name }}</span>
           <LucidePauseCircle
             v-if="project.status === 'On hold'"
-            class="ml-auto size-3.5 shrink-0 text-ink-gray-4"
+            class="size-3.5 shrink-0 text-ink-gray-4"
             title="On hold"
           />
-          <span
-            v-else-if="project.open_tasks"
-            class="ml-auto text-xs tabular-nums text-ink-gray-4"
-          >
+          <span v-else-if="project.open_tasks" class="text-xs tabular-nums text-ink-gray-4">
             {{ project.open_tasks }}
           </span>
         </router-link>
 
         <p
           v-if="!loadingProjects && !recentProjects.length"
-          class="px-2.5 py-2 text-xs text-ink-gray-4"
+          class="px-2 py-1.5 text-sm text-ink-gray-4"
         >
-          No projects yet
+          No open projects
         </p>
       </div>
     </div>
 
     <div v-else class="flex-1" />
 
-    <!-- secondary links, then the user -->
-    <div class="flex flex-col gap-0.5 px-3 pb-2" :class="iconsOnly ? 'px-2' : ''">
-      <button
-        class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[15px] text-ink-gray-7 hover:bg-surface-gray-2"
-        :title="iconsOnly ? 'Keyboard shortcuts' : undefined"
-        @click="emitBus(EVENTS.SHOW_SHORTCUTS)"
+    <!-- help, then collapse -->
+    <div class="flex flex-col gap-0.5 p-2">
+      <SidebarLink label="Help" :collapsed="iconsOnly" @click="emitBus(EVENTS.SHOW_SHORTCUTS)">
+        <LucideCircleHelp class="size-4" />
+      </SidebarLink>
+      <SidebarLink
+        class="hidden lg:flex"
+        :label="collapsed ? 'Expand' : 'Collapse'"
+        :collapsed="iconsOnly"
+        @click="toggleCollapsed"
       >
-        <LucideKeyboard class="size-[18px] shrink-0 text-ink-gray-6" />
-        <span v-if="!iconsOnly">Shortcuts</span>
-        <kbd
-          v-if="!iconsOnly"
-          class="ml-auto rounded-md bg-surface-gray-3 px-1.5 text-xs text-ink-gray-6"
-        >?</kbd>
-      </button>
-      <button
-        class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[15px] text-ink-gray-7 hover:bg-surface-gray-2"
-        :title="iconsOnly ? `Theme: ${themeLabel}` : undefined"
-        @click="cycleTheme"
-      >
-        <component :is="themeIcon" class="size-[18px] shrink-0 text-ink-gray-6" />
-        <span v-if="!iconsOnly">Theme</span>
-        <span v-if="!iconsOnly" class="ml-auto text-xs text-ink-gray-5">{{ themeLabel }}</span>
-      </button>
-    </div>
-
-    <div class="border-t border-outline-gray-2 p-2">
-      <Dropdown :options="userMenu" placement="top-start" class="w-full">
-        <button
-          class="flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 hover:bg-surface-gray-2"
-        >
-          <Avatar :image="user.user_image" :label="user.full_name" size="sm" />
-          <span v-if="!iconsOnly" class="truncate text-sm font-medium text-ink-gray-8">
-            {{ user.full_name }}
-          </span>
-          <LucideChevronsUpDown
-            v-if="!iconsOnly"
-            class="ml-auto size-3.5 text-ink-gray-5"
-          />
-        </button>
-      </Dropdown>
+        <component :is="collapsed ? LucideArrowRightFromLine : LucideArrowLeftToLine" class="size-4" />
+      </SidebarLink>
     </div>
   </aside>
 
@@ -173,33 +188,83 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, h, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Avatar, Dropdown, useTheme } from 'frappe-ui'
+import { Dropdown, useTheme } from 'frappe-ui'
 import SidebarLink from './SidebarLink.vue'
 import CreateProjectDialog from './CreateProjectDialog.vue'
-import { logout, permissions, user } from '@/data/session'
+import NotificationsBell from './NotificationsBell.vue'
+import { brand, logout, permissions, user } from '@/data/session'
+import { installedApps, loadInstalledApps } from '@/data/apps'
 import { loadProjects, loadingProjects, projects } from '@/data/projects'
 import { closeSidebar, isMobile, sidebarOpen } from '@/data/ui'
 import { emit as emitBus, EVENTS } from '@/data/bus'
 import { batched, onListUpdate } from '@/data/realtime'
+import { paletteOpen } from '@/composables/useShortcuts'
 import { projectColor } from '@/utils/constants'
 
 import LucideSun from '~icons/lucide/sun'
 import LucideMoon from '~icons/lucide/moon'
 import LucideSunMoon from '~icons/lucide/sun-moon'
+import LucideCheck from '~icons/lucide/check'
+import LucideLayoutGrid from '~icons/lucide/layout-grid'
+import LucideKeyboard from '~icons/lucide/keyboard'
+import LucideLogOut from '~icons/lucide/log-out'
+import LucideArrowLeftToLine from '~icons/lucide/arrow-left-to-line'
+import LucideArrowRightFromLine from '~icons/lucide/arrow-right-from-line'
 
 const router = useRouter()
 const route = useRoute()
-const collapsed = ref(localStorage.getItem('pb:sidebar-collapsed') === '1')
+
+function stored(key, fallback) {
+  try {
+    return localStorage.getItem(key) ?? fallback
+  } catch {
+    return fallback
+  }
+}
+function store(key, value) {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // private mode: the choice just isn't remembered
+  }
+}
+
+const collapsed = ref(stored('pb:sidebar-collapsed', '0') === '1')
+const showProjects = ref(stored('pb:sidebar-projects', '1') === '1')
 const showNewProject = ref(false)
+const logoFailed = ref(false)
 
 /** The drawer is always full width; only the desktop rail collapses. */
 const iconsOnly = computed(() => collapsed.value && !isMobile.value)
 
 function toggleCollapsed() {
   collapsed.value = !collapsed.value
-  localStorage.setItem('pb:sidebar-collapsed', collapsed.value ? '1' : '0')
+  store('pb:sidebar-collapsed', collapsed.value ? '1' : '0')
+}
+
+function toggleProjects() {
+  showProjects.value = !showProjects.value
+  store('pb:sidebar-projects', showProjects.value ? '1' : '0')
+}
+
+const searchShortcut = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'
+
+function openSearch() {
+  closeSidebar()
+  paletteOpen.value = true
+}
+
+const brandLogo = computed(() => (logoFailed.value ? null : brand.value.logo))
+watch(() => brand.value.logo, () => (logoFailed.value = false))
+
+function initials(name) {
+  return (name || 'P')
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() || '')
+    .join('')
 }
 
 // Open and paused projects, most recently touched first - the closed ones stay
@@ -210,24 +275,64 @@ const recentProjects = computed(() =>
 
 const { currentTheme, setTheme } = useTheme()
 
-const userMenu = computed(() => [
-  { label: 'Go to Desk', icon: 'monitor', onClick: () => (window.location.href = '/desk') },
-  { label: 'Log out', icon: 'log-out', onClick: logout },
+/** A dropdown icon from an image URL: the apps menu shows each app's logo. */
+function logoIcon(src) {
+  return (_, { attrs }) =>
+    h('img', { ...attrs, src, alt: '', class: [attrs.class, 'rounded object-contain'] })
+}
+
+// Frappe's own list of the site's apps - the desk's apps screen reads the same.
+const appsMenu = computed(() => [
+  {
+    label: 'Desk',
+    icon: logoIcon('/assets/frappe/images/frappe-framework-logo.svg'),
+    onClick: () => (window.location.href = '/desk'),
+  },
+  ...(installedApps.data || [])
+    .filter((app) => app.route && app.name !== 'project_board')
+    .map((app) => ({
+      label: app.title || app.name,
+      icon: app.logo ? logoIcon(app.logo) : LucideLayoutGrid,
+      onClick: () => (window.location.href = app.route),
+    })),
 ])
 
-const themeIcon = computed(
-  () => ({ light: LucideSun, dark: LucideMoon }[currentTheme.value] || LucideSunMoon),
+const themeMenu = computed(() =>
+  [
+    { value: 'light', label: 'Light', icon: LucideSun },
+    { value: 'dark', label: 'Dark', icon: LucideMoon },
+    { value: 'system', label: 'System', icon: LucideSunMoon },
+  ].map((theme) => ({
+    label: theme.label,
+    icon: currentTheme.value === theme.value ? LucideCheck : theme.icon,
+    onClick: () => setTheme(theme.value),
+  })),
 )
 
-const themeLabel = computed(
-  () => ({ light: 'Light', dark: 'Dark', system: 'System' })[currentTheme.value] || 'System',
-)
-
-/** light -> dark -> system, the usual three-state cycle. */
-function cycleTheme() {
-  const next = { light: 'dark', dark: 'system', system: 'light' }[currentTheme.value] || 'dark'
-  setTheme(next)
-}
+const brandMenu = computed(() => [
+  {
+    group: 'App',
+    hideLabel: true,
+    items: [
+      { label: 'Apps', icon: LucideLayoutGrid, submenu: appsMenu.value },
+      {
+        label: 'Theme',
+        icon: { light: LucideSun, dark: LucideMoon }[currentTheme.value] || LucideSunMoon,
+        submenu: themeMenu.value,
+      },
+      {
+        label: 'Keyboard shortcuts',
+        icon: LucideKeyboard,
+        onClick: () => emitBus(EVENTS.SHOW_SHORTCUTS),
+      },
+    ],
+  },
+  {
+    group: 'Account',
+    hideLabel: true,
+    items: [{ label: 'Log out', icon: LucideLogOut, onClick: logout }],
+  },
+])
 
 function onProjectCreated(name) {
   loadProjects({ force: true })
@@ -255,6 +360,7 @@ const refreshProjects = batched(() => loadProjects({ force: true }), 1500)
 let stopLive = []
 onMounted(() => {
   loadProjects()
+  loadInstalledApps()
   stopLive = [
     onListUpdate('Project', () => refreshProjects()),
     onListUpdate('Task', () => refreshProjects()),

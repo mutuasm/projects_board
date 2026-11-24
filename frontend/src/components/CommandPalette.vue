@@ -70,6 +70,7 @@ import { openTask } from '@/utils/taskPanel'
 import { debounce } from '@/utils/debounce'
 
 import LucideLayoutGrid from '~icons/lucide/layout-grid'
+import LucideHome from '~icons/lucide/home'
 import LucideCircleUser from '~icons/lucide/circle-user'
 import LucideSquareCheck from '~icons/lucide/square-check'
 import LucideFolder from '~icons/lucide/folder'
@@ -91,6 +92,13 @@ const searching = ref(false)
 
 const navItems = computed(() =>
   [
+    {
+      key: 'nav:home',
+      label: 'Home',
+      icon: LucideHome,
+      hint: 'g then h',
+      run: () => router.push({ name: 'Home' }),
+    },
     {
       key: 'nav:my-work',
       label: 'My Work',

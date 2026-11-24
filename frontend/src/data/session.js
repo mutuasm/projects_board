@@ -14,6 +14,7 @@ export const session = reactive({
 
 export const user = computed(() => session.boot.data?.user || {})
 export const options = computed(() => session.boot.data?.options || {})
+export const brand = computed(() => session.boot.data?.brand || { name: 'Project Board', logo: null })
 export const permissions = computed(() => ({
   canCreateProject: session.boot.data?.can_create_project ?? false,
   canCreateTask: session.boot.data?.can_create_task ?? false,

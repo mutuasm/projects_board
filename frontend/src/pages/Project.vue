@@ -1,26 +1,31 @@
 <template>
   <div class="flex h-full min-h-0 flex-col">
-    <!-- header -->
-    <header class="shrink-0 border-b border-outline-gray-2 px-4 pt-4 sm:px-6 sm:pt-5 short:pt-2">
-      <div class="flex items-center gap-2.5 sm:gap-3">
+    <!-- header: where you are on the left, what you can do on the right -->
+    <PageHeader>
+      <template #title>
+        <router-link
+          :to="{ name: 'Projects' }"
+          class="hidden shrink-0 text-ink-gray-5 hover:text-ink-gray-8 sm:inline"
+        >
+          Projects
+        </router-link>
+        <LucideChevronRight class="hidden size-4 shrink-0 text-ink-gray-4 sm:block" />
         <span
-          class="grid size-9 shrink-0 place-items-center rounded-lg"
+          class="grid size-6 shrink-0 place-items-center rounded-md"
           :style="{ backgroundColor: `${color}26`, color }"
         >
-          <LucideFolderKanban class="size-[18px]" />
+          <LucideFolderKanban class="size-3.5" />
         </span>
 
         <!-- the name doubles as a project switcher -->
-        <Dropdown :options="switcherOptions" placement="bottom-start">
+        <Dropdown :options="switcherOptions" placement="left">
           <button
-            class="-ml-1 flex min-w-0 items-center gap-1 rounded-lg px-1 py-0.5 hover:bg-surface-gray-2"
+            class="flex min-w-0 items-center gap-1 rounded-md px-1 py-0.5 hover:bg-surface-gray-2"
           >
-            <h1
-              class="min-w-0 truncate text-xl font-semibold tracking-tight text-ink-gray-9 sm:text-[26px] sm:leading-9"
-            >
+            <h1 class="min-w-0 truncate font-medium text-ink-gray-9">
               {{ doc?.project_name || project }}
             </h1>
-            <LucideChevronDown class="size-5 shrink-0 text-ink-gray-6" />
+            <LucideChevronDown class="size-4 shrink-0 text-ink-gray-5" />
           </button>
         </Dropdown>
 
@@ -42,48 +47,47 @@
         >
           {{ doc.priority }} priority
         </Badge>
+      </template>
 
-        <div class="ml-auto flex shrink-0 items-center gap-2">
-          <div v-if="doc" class="hidden items-center gap-2 xl:flex">
-            <div class="text-right">
-              <p class="text-xs text-ink-gray-5">Progress</p>
-              <p class="text-sm font-medium text-ink-gray-8">
-                {{ Math.round(doc.percent_complete || 0) }}%
-              </p>
-            </div>
-            <div class="h-1.5 w-24 overflow-hidden rounded-full bg-surface-gray-2">
-              <div
-                class="h-full rounded-full bg-surface-green-3"
-                :style="{ width: `${doc.percent_complete || 0}%` }"
-              />
-            </div>
+      <template #actions>
+        <div v-if="doc" class="hidden items-center gap-2 xl:flex">
+          <span class="text-sm tabular-nums text-ink-gray-6">
+            {{ Math.round(doc.percent_complete || 0) }}%
+          </span>
+          <div class="h-1.5 w-20 overflow-hidden rounded-full bg-surface-gray-2">
+            <div
+              class="h-full rounded-full bg-surface-green-3"
+              :style="{ width: `${doc.percent_complete || 0}%` }"
+            />
           </div>
-          <AvatarStack :users="members" :max="4" class="hidden md:flex" />
-          <Tooltip text="Open this project in Desk">
-            <Button class="hidden sm:inline-flex" @click="openInDesk">
-              <template #prefix><LucideExternalLink class="size-4" /></template>
-              Open in Desk
-            </Button>
-          </Tooltip>
-          <Button
-            v-if="permissions.canCreateTask"
-            variant="solid"
-            class="hidden md:inline-flex"
-            @click="showNewTask = true"
-          >
-            <template #prefix><LucidePlus class="size-4" /></template>
-            New task
-          </Button>
-          <Dropdown :options="projectMenu" placement="bottom-end">
-            <Button variant="ghost">
-              <LucideMoreHorizontal class="size-4" />
-            </Button>
-          </Dropdown>
         </div>
-      </div>
+        <AvatarStack :users="members" :max="4" class="hidden md:flex" />
+        <Tooltip text="Open this project in Desk">
+          <Button class="hidden sm:inline-flex" @click="openInDesk">
+            <template #prefix><LucideExternalLink class="size-4" /></template>
+            Open in Desk
+          </Button>
+        </Tooltip>
+        <Button
+          v-if="permissions.canCreateTask"
+          variant="solid"
+          class="hidden md:inline-flex"
+          @click="showNewTask = true"
+        >
+          <template #prefix><LucidePlus class="size-4" /></template>
+          New task
+        </Button>
+        <Dropdown :options="projectMenu" placement="right">
+          <Button variant="ghost" aria-label="Project actions">
+            <LucideMoreHorizontal class="size-4" />
+          </Button>
+        </Dropdown>
+      </template>
+    </PageHeader>
 
+    <div class="shrink-0 border-b border-outline-gray-2 px-4 sm:px-5">
       <!-- phones get the progress bar inline under the title -->
-      <div v-if="doc" class="mt-2 flex items-center gap-2 md:hidden">
+      <div v-if="doc" class="mt-2.5 flex items-center gap-2 md:hidden">
         <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-gray-2">
           <div
             class="h-full rounded-full bg-surface-green-3"
@@ -98,20 +102,20 @@
 
       <!-- tabs: scroll sideways rather than wrapping on a narrow screen -->
       <nav
-        class="no-scrollbar -mx-4 mt-4 flex items-center gap-5 overflow-x-auto px-4 sm:mx-0 sm:gap-7 sm:px-0 short:mt-1"
+        class="no-scrollbar -mx-4 flex items-center gap-5 overflow-x-auto px-4 sm:mx-0 sm:gap-6 sm:px-0"
       >
         <router-link
           v-for="tab in tabs"
           :key="tab.name"
           :to="{ name: tab.name, params: { project } }"
-          class="-mb-px flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 border-transparent pb-3 pt-1 text-[15px] text-ink-gray-6 transition-colors hover:text-ink-gray-9"
+          class="-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 border-transparent py-2.5 text-base text-ink-gray-6 transition-colors hover:text-ink-gray-9"
           active-class="!border-ink-gray-9 font-medium !text-ink-gray-9"
         >
           <component :is="tab.icon" class="size-4" />
           {{ tab.label }}
         </router-link>
       </nav>
-    </header>
+    </div>
 
     <!-- paused and closed projects stay browsable; say so and offer the way back -->
     <div
@@ -188,6 +192,7 @@ import { Badge, Dropdown, Tooltip, toast } from 'frappe-ui'
 import { useRouter } from 'vue-router'
 import api from '@/data/api'
 import AvatarStack from '@/components/AvatarStack.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import BoardFilters from '@/components/BoardFilters.vue'
 import CloseProjectDialog from '@/components/CloseProjectDialog.vue'
 import CreateTaskDialog from '@/components/CreateTaskDialog.vue'

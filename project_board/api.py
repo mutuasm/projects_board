@@ -177,8 +177,31 @@ def get_boot_info():
 		# false until `bench migrate` has switched Auto Repeat on for Task
 		"can_repeat_tasks": _repeat_ready(),
 		"is_system_manager": "System Manager" in frappe.get_roles(),
+		"brand": _brand(),
 		"options": get_field_options(),
 	}
+
+
+def _brand() -> dict:
+	"""The name and logo at the top of the sidebar.
+
+	Frappe CRM's branding settings come first when CRM is installed, so the two
+	apps look like one product; then the desk's own logo and app name, then the
+	default company.
+	"""
+	name = logo = None
+	if "crm" in frappe.get_installed_apps():
+		name, logo = frappe.db.get_value("FCRM Settings", None, ["brand_name", "brand_logo"]) or (None, None)
+
+	app_name = frappe.db.get_single_value("Website Settings", "app_name")
+	company = frappe.defaults.get_global_default("company")
+	name = name or (app_name if app_name and app_name != "Frappe" else None) or company or _("Project Board")
+	logo = (
+		logo
+		or frappe.db.get_single_value("Navbar Settings", "app_logo")
+		or (frappe.db.get_value("Company", company, "company_logo") if company else None)
+	)
+	return {"name": name, "logo": logo}
 
 
 def _select_options(doctype: str, fieldname: str) -> list[str]:

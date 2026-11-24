@@ -1,40 +1,35 @@
 <template>
   <div class="flex h-full min-h-0 flex-col">
-    <header
-      class="shrink-0 border-b border-outline-gray-2 px-4 py-3 sm:px-5 sm:py-4"
-    >
-      <div class="flex items-center gap-2">
-        <div class="min-w-0">
-          <h1 class="truncate text-xl font-semibold tracking-tight text-ink-gray-9 sm:text-[26px] sm:leading-9">
-            Projects
-          </h1>
-          <p class="text-xs text-ink-gray-5 sm:text-sm">
-            {{ filtered.length }} of {{ projects.length }} projects
-          </p>
-        </div>
+    <PageHeader>
+      <template #title>
+        <h1 class="truncate font-medium">Projects</h1>
+        <span class="shrink-0 text-base text-ink-gray-5">
+          {{ filtered.length }} of {{ projects.length }}
+        </span>
+      </template>
+      <template #actions>
+        <TabButtons
+          v-if="!isNarrow"
+          v-model="layout"
+          :buttons="[
+            { label: 'Cards', value: 'cards' },
+            { label: 'Table', value: 'table' },
+          ]"
+        />
+        <Button
+          v-if="permissions.canCreateProject"
+          variant="solid"
+          @click="showNew = true"
+        >
+          <template #prefix><LucidePlus class="size-4" /></template>
+          <span class="hidden sm:inline">New project</span>
+        </Button>
+      </template>
+    </PageHeader>
 
-        <div class="ml-auto flex shrink-0 items-center gap-2">
-          <TabButtons
-            v-if="!isNarrow"
-            v-model="layout"
-            :buttons="[
-              { label: 'Cards', value: 'cards' },
-              { label: 'Table', value: 'table' },
-            ]"
-          />
-          <Button
-            v-if="permissions.canCreateProject"
-            variant="solid"
-            @click="showNew = true"
-          >
-            <template #prefix><LucidePlus class="size-4" /></template>
-            <span class="hidden sm:inline">New project</span>
-          </Button>
-        </div>
-      </div>
-
+    <header class="shrink-0 border-b border-outline-gray-2 px-4 py-2.5 sm:px-5">
       <!-- search + status sit on their own row so neither gets squeezed -->
-      <div class="mt-3 flex items-center gap-2">
+      <div class="flex items-center gap-2">
         <div class="relative min-w-0 flex-1 sm:max-w-xs">
           <LucideSearch
             class="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-ink-gray-4"
@@ -242,6 +237,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Badge, Button, LoadingIndicator, TabButtons } from 'frappe-ui'
 import NullableSelect from '@/components/NullableSelect.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import AvatarStack from '@/components/AvatarStack.vue'
 import CreateProjectDialog from '@/components/CreateProjectDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
