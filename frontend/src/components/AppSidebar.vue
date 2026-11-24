@@ -157,6 +157,16 @@
           </span>
         </router-link>
 
+        <router-link
+          v-if="moreProjects > 0"
+          :to="{ name: 'Projects' }"
+          class="flex h-7.5 shrink-0 items-center gap-2 rounded px-2 text-sm text-ink-gray-5 hover:bg-surface-gray-2 hover:text-ink-gray-8"
+        >
+          <span class="size-4 shrink-0" />
+          All projects
+          <span class="ml-auto text-xs tabular-nums">{{ moreProjects }} more</span>
+        </router-link>
+
         <p
           v-if="!loadingProjects && !recentProjects.length"
           class="px-2 py-1.5 text-sm text-ink-gray-4"
@@ -269,9 +279,20 @@ function initials(name) {
 
 // Open and paused projects, most recently touched first - the closed ones stay
 // reachable from the Projects page.
-const recentProjects = computed(() =>
-  projects.value.filter((p) => ['Open', 'On hold'].includes(p.status)).slice(0, 25),
+/** The sidebar is for getting around, not a directory: your projects first, a short list. */
+const SIDEBAR_PROJECTS = 10
+const openProjects = computed(() =>
+  projects.value.filter((p) => ['Open', 'On hold'].includes(p.status)),
 )
+const recentProjects = computed(() => {
+  const me = user.value?.name
+  const mine = (p) => (p.members || []).some((m) => m.name === me)
+  return [...openProjects.value.filter(mine), ...openProjects.value.filter((p) => !mine(p))].slice(
+    0,
+    SIDEBAR_PROJECTS,
+  )
+})
+const moreProjects = computed(() => openProjects.value.length - recentProjects.value.length)
 
 const { currentTheme, setTheme } = useTheme()
 

@@ -7,7 +7,7 @@
           <span class="hidden sm:inline">New task</span>
         </Button>
         <Dropdown :options="pageMenu" placement="right">
-          <Button variant="ghost" aria-label="More">
+          <Button variant="ghost" label="More">
             <LucideMoreHorizontal class="size-4" />
           </Button>
         </Dropdown>
@@ -220,7 +220,7 @@
               <Button
                 v-if="permissions.canCreateTask"
                 variant="ghost"
-                aria-label="New milestone"
+                label="New milestone"
                 title="New milestone"
                 @click="openNewTask({ milestone: true })"
               >

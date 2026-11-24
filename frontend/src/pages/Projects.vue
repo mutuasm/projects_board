@@ -82,28 +82,27 @@
           v-for="project in paged.slice(filtered)"
           :key="project.name"
           :to="{ name: 'Board', params: { project: project.name } }"
-          class="pb-card flex flex-col gap-3 !rounded-xl p-4"
+          class="pb-card flex flex-col gap-3 p-4"
         >
-          <div class="flex items-start gap-3">
+          <div class="flex items-start gap-2.5">
             <span
-              class="grid size-9 shrink-0 place-items-center rounded-lg"
-              :style="{
-                backgroundColor: `${projectColor(project.name)}26`,
-                color: projectColor(project.name),
-              }"
-            >
-              <LucideFolderKanban class="size-[18px]" />
-            </span>
+              class="mt-1.5 size-2.5 shrink-0 rounded-[3px]"
+              :style="{ backgroundColor: projectColor(project.name) }"
+            />
             <div class="min-w-0 flex-1">
               <h2 class="truncate text-base font-medium text-ink-gray-9">
                 {{ project.project_name }}
               </h2>
-              <p class="truncate text-xs text-ink-gray-5">
-                {{ project.project_type || 'No type' }}
-                <span v-if="project.customer"> · {{ project.customer }}</span>
+              <p
+                v-if="project.project_type || project.customer"
+                class="truncate text-sm text-ink-gray-5"
+              >
+                {{ [project.project_type, project.customer].filter(Boolean).join(' · ') }}
               </p>
             </div>
+            <!-- Open is the normal state; only say something when it isn't -->
             <Badge
+              v-if="project.status !== 'Open'"
               :theme="PROJECT_STATUS_STYLES[project.status]?.theme || 'gray'"
               variant="subtle"
               size="sm"
@@ -112,37 +111,42 @@
             </Badge>
           </div>
 
-          <div>
-            <div class="mb-1 flex items-baseline justify-between text-xs">
-              <span class="text-ink-gray-5">
-                {{ project.open_tasks }} open / {{ project.total_tasks }} tasks
+          <div class="mt-auto">
+            <div class="mb-1.5 flex items-center gap-2 text-sm text-ink-gray-5">
+              <span>
+                {{
+                  project.total_tasks
+                    ? `${project.open_tasks} open of ${project.total_tasks}`
+                    : 'No tasks yet'
+                }}
               </span>
-              <span class="font-medium tabular-nums text-ink-gray-7">
+              <span
+                v-if="project.expected_end_date"
+                :class="
+                  isOverdue(project.expected_end_date, project.status) ? 'text-ink-red-3' : ''
+                "
+              >
+                · due {{ formatDate(project.expected_end_date) }}
+              </span>
+              <AvatarStack
+                v-if="project.members?.length"
+                :users="project.members"
+                :max="3"
+                size="xs"
+                class="ml-auto"
+              />
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="h-1 flex-1 overflow-hidden rounded-full bg-surface-gray-2">
+                <div
+                  class="h-full rounded-full bg-surface-green-3"
+                  :style="{ width: `${project.percent_complete || 0}%` }"
+                />
+              </div>
+              <span class="w-8 text-right text-xs tabular-nums text-ink-gray-5">
                 {{ Math.round(project.percent_complete || 0) }}%
               </span>
             </div>
-            <div class="h-1.5 w-full overflow-hidden rounded-full bg-surface-gray-2">
-              <div
-                class="h-full rounded-full bg-surface-green-3"
-                :style="{ width: `${project.percent_complete || 0}%` }"
-              />
-            </div>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <AvatarStack :users="project.members" :max="4" size="xs" />
-            <span
-              v-if="project.expected_end_date"
-              class="ml-auto inline-flex items-center gap-1 text-xs"
-              :class="
-                isOverdue(project.expected_end_date, project.status)
-                  ? 'font-medium text-ink-red-3'
-                  : 'text-ink-gray-5'
-              "
-            >
-              <LucideCalendar class="size-3" />
-              {{ formatDate(project.expected_end_date) }}
-            </span>
           </div>
         </router-link>
       </div>

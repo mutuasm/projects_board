@@ -291,3 +291,20 @@ body {
       prose-th:border prose-th:border-outline-gray-2 prose-th:bg-surface-gray-2 prose-th:p-2;
   }
 }
+
+/* Secondary controls (a status chevron, a task id) stay out of sight until you
+   point at their row, so a list reads as titles first. Touch screens have no
+   hover, so they always show there. */
+.group .pb-hover-reveal {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.group:hover .pb-hover-reveal,
+.group:focus-within .pb-hover-reveal {
+  opacity: 1;
+}
+@media (hover: none) {
+  .group .pb-hover-reveal {
+    opacity: 1;
+  }
+}

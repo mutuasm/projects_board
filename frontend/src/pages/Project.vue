@@ -10,12 +10,7 @@
           Projects
         </router-link>
         <LucideChevronRight class="hidden size-4 shrink-0 text-ink-gray-4 sm:block" />
-        <span
-          class="grid size-6 shrink-0 place-items-center rounded-md"
-          :style="{ backgroundColor: `${color}26`, color }"
-        >
-          <LucideFolderKanban class="size-3.5" />
-        </span>
+        <span class="size-2.5 shrink-0 rounded-[3px]" :style="{ backgroundColor: color }" />
 
         <!-- the name doubles as a project switcher -->
         <Dropdown :options="switcherOptions" placement="left">
@@ -29,23 +24,15 @@
           </button>
         </Dropdown>
 
+        <!-- Open is the normal state; only a paused or closed project gets a badge -->
         <Badge
-          v-if="doc?.status"
+          v-if="doc?.status && doc.status !== 'Open'"
           :theme="projectStatusTheme"
           variant="subtle"
           size="sm"
           class="shrink-0"
         >
           {{ doc.status }}
-        </Badge>
-        <Badge
-          v-if="doc?.priority"
-          theme="gray"
-          variant="subtle"
-          size="sm"
-          class="hidden shrink-0 lg:inline-flex"
-        >
-          {{ doc.priority }} priority
         </Badge>
       </template>
 
@@ -62,12 +49,6 @@
           </div>
         </div>
         <AvatarStack :users="members" :max="4" class="hidden md:flex" />
-        <Tooltip text="Open this project in Desk">
-          <Button class="hidden sm:inline-flex" @click="openInDesk">
-            <template #prefix><LucideExternalLink class="size-4" /></template>
-            Open in Desk
-          </Button>
-        </Tooltip>
         <Button
           v-if="permissions.canCreateTask"
           variant="solid"
@@ -78,7 +59,7 @@
           New task
         </Button>
         <Dropdown :options="projectMenu" placement="right">
-          <Button variant="ghost" aria-label="Project actions">
+          <Button variant="ghost" label="Project actions">
             <LucideMoreHorizontal class="size-4" />
           </Button>
         </Dropdown>
@@ -189,7 +170,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Badge, Dropdown, Tooltip, toast } from 'frappe-ui'
+import { Badge, Dropdown, toast } from 'frappe-ui'
 import { useRouter } from 'vue-router'
 import api from '@/data/api'
 import AvatarStack from '@/components/AvatarStack.vue'
@@ -280,6 +261,7 @@ const isClosed = computed(() => ['Completed', 'Cancelled'].includes(doc.value?.s
 const isOnHold = computed(() => doc.value?.status === 'On hold')
 
 const projectMenu = computed(() => [
+  { label: 'Open in Desk', icon: 'external-link', onClick: openInDesk },
   {
     label: 'Refresh',
     icon: 'refresh-cw',

@@ -36,7 +36,8 @@ export function dueLabel(value) {
 export function isOverdue(value, status) {
   if (!value) return false
   if (['Completed', 'Cancelled'].includes(status)) return false
-  return dayjs(value).isBefore(dayjs())
+  // due today is not late yet; ERPNext only flags it Overdue from tomorrow
+  return dayjs(value).isBefore(dayjs().startOf('day'))
 }
 
 export function initials(name) {

@@ -1,11 +1,18 @@
 <template>
   <div class="flex h-full min-h-0 flex-col">
-    <PageHeader title="My Work">
+    <PageHeader>
+      <template #title>
+        <h1 class="truncate font-medium">My Work</h1>
+        <span v-if="active.length" class="shrink-0 text-base text-ink-gray-5">
+          {{ active.length }} open
+        </span>
+      </template>
       <template #actions>
-        <Button v-if="permissions.canCreateProject" @click="showNewProject = true">
-          <template #prefix><LucideFolderPlus class="size-4" /></template>
-          <span class="hidden sm:inline">New project</span>
-        </Button>
+        <Dropdown :options="moreMenu" placement="right">
+          <Button variant="ghost" label="More">
+            <LucideMoreHorizontal class="size-4" />
+          </Button>
+        </Dropdown>
         <Button v-if="permissions.canCreateTask" variant="solid" @click="showNewTask = true">
           <template #prefix><LucidePlus class="size-4" /></template>
           <span class="hidden sm:inline">New task</span>
@@ -13,396 +20,249 @@
       </template>
     </PageHeader>
 
-    <div class="thin-scrollbar min-h-0 flex-1 overflow-y-auto">
-    <div class="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-5 pb-safe-bottom sm:px-6 sm:py-6">
-      <p class="text-base text-ink-gray-5">{{ todayLabel }} · {{ summaryLine }}</p>
-
-      <!-- headline numbers -->
-      <div class="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
-        <StatTile label="Open tasks" :value="active.length">
-          <template #icon><LucideListTodo class="size-3.5 text-ink-gray-5" /></template>
-        </StatTile>
-        <StatTile
-          label="Overdue"
-          :value="buckets.overdue.length"
-          :value-class="buckets.overdue.length ? 'text-ink-red-3' : 'text-ink-gray-9'"
-        >
-          <template #icon><LucideAlarmClock class="size-3.5 text-ink-red-3" /></template>
-        </StatTile>
-        <StatTile label="Due in 7 days" :value="buckets.today.length + buckets.week.length">
-          <template #icon><LucideCalendarRange class="size-3.5 text-ink-gray-5" /></template>
-        </StatTile>
-        <StatTile label="Completed, last 14 days" :value="recentlyCompleted.length">
-          <template #icon><LucideCheckCheck class="size-3.5 text-ink-green-3" /></template>
-        </StatTile>
+    <!-- list controls sit in one strip under the header, like a CRM list view -->
+    <div
+      class="flex shrink-0 flex-wrap items-center gap-2 border-b border-outline-gray-2 px-4 py-2.5 sm:px-5"
+    >
+      <div class="relative min-w-0 basis-full sm:max-w-xs sm:flex-1 sm:basis-auto">
+        <LucideSearch
+          class="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-ink-gray-4"
+        />
+        <input
+          v-model="search"
+          type="search"
+          placeholder="Filter my tasks"
+          class="pb-input h-9 w-full pl-7 pr-2 text-base sm:h-7 sm:text-sm"
+        />
       </div>
+      <TabButtons
+        v-model="groupBy"
+        :buttons="[
+          { label: 'Due date', value: 'due' },
+          { label: 'Project', value: 'project' },
+          { label: 'Status', value: 'status' },
+        ]"
+      />
+      <label class="ml-auto flex items-center gap-1.5 text-sm text-ink-gray-6">
+        <input
+          v-model="includeCompleted"
+          type="checkbox"
+          class="rounded border-outline-gray-3 text-ink-gray-9 focus:ring-0"
+        />
+        Show done
+      </label>
+      <Tooltip text="Refresh">
+        <Button variant="ghost" :loading="loading" label="Refresh" @click="load">
+          <LucideRefreshCw class="size-4" />
+        </Button>
+      </Tooltip>
+    </div>
 
-      <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <!-- the queue -->
-        <section class="min-w-0">
-          <!-- sign-offs: tasks you handed out that are now waiting in review -->
-          <section v-if="reviews.length" class="mb-6">
-            <h2 class="mb-2 flex items-center gap-2 text-sm font-semibold text-ink-gray-8">
-              <LucideClipboardCheck class="size-4 text-ink-amber-3" />
-              Waiting on your review
-              <span class="text-xs font-normal tabular-nums text-ink-gray-5">
-                {{ reviews.length }}
+    <div class="thin-scrollbar min-h-0 flex-1 overflow-y-auto">
+      <div class="mx-auto max-w-5xl px-4 pb-safe-bottom pt-6 sm:px-6">
+        <!-- the one line that matters most, then the quiet context -->
+        <div v-if="active.length" class="mb-6">
+          <p class="text-xl font-semibold text-ink-gray-9">{{ headline }}</p>
+          <p class="mt-1 text-sm text-ink-gray-5">{{ todayLabel }} · {{ contextLine }}</p>
+        </div>
+
+        <!-- sign-offs come first: they block someone else -->
+        <section v-if="reviews.length" class="mb-8">
+          <h2 class="mb-2 flex items-center gap-2 text-sm font-medium text-ink-gray-9">
+            <LucideClipboardCheck class="size-4 text-ink-amber-3" />
+            Waiting on your review
+            <span class="tabular-nums text-ink-gray-5">{{ reviews.length }}</span>
+          </h2>
+          <ul class="pb-panel overflow-hidden">
+            <li
+              v-for="task in reviews"
+              :key="task.name"
+              class="flex cursor-pointer flex-wrap items-center gap-3 border-b border-outline-gray-1 px-3 py-2.5 last:border-b-0 hover:bg-surface-gray-1"
+              @click="openTask(task.name)"
+            >
+              <AvatarStack :users="task.assignees || []" :max="2" size="sm" />
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-base text-ink-gray-9">{{ task.subject }}</p>
+                <p class="flex items-center gap-1.5 truncate text-sm text-ink-gray-5">
+                  {{ task.project_title || 'No project' }}
+                  <template v-if="task.review_date">
+                    ·
+                    <span :class="reviewLate(task) ? 'text-ink-red-3' : ''">
+                      review by {{ dueLabel(task.review_date) }}
+                    </span>
+                  </template>
+                </p>
+              </div>
+              <div class="flex shrink-0 gap-2" @click.stop>
+                <Button size="sm" :loading="reviewing === task.name" @click="signOff(task, 'Working')">
+                  Send back
+                </Button>
+                <Button
+                  size="sm"
+                  variant="solid"
+                  :loading="reviewing === task.name"
+                  @click="signOff(task, 'Completed')"
+                >
+                  Approve
+                </Button>
+              </div>
+            </li>
+          </ul>
+        </section>
+
+        <div v-if="loading && !myTasks.length" class="flex h-40 items-center justify-center">
+          <LoadingIndicator class="size-5 text-ink-gray-5" />
+        </div>
+
+        <EmptyState
+          v-else-if="!active.length && !includeCompleted"
+          title="Nothing on your plate"
+          description="Tasks assigned to you show up here as soon as someone adds you - including tasks you share with other people."
+        >
+          <template #icon><LucideCheckCheck class="size-5 text-ink-gray-5" /></template>
+          <div class="mt-2 flex gap-2">
+            <Button @click="$router.push({ name: 'Projects' })">Browse projects</Button>
+            <Button v-if="permissions.canCreateTask" variant="solid" @click="showNewTask = true">
+              New task
+            </Button>
+          </div>
+        </EmptyState>
+
+        <p v-else-if="!groups.length" class="py-10 text-center text-sm text-ink-gray-5">
+          No tasks match “{{ search }}”.
+        </p>
+
+        <div v-else class="flex flex-col gap-6 pb-8">
+          <section v-for="group in paged.cap(groups)" :key="group.key">
+            <!-- group head: collapsible, so a long "No due date" can be tucked away -->
+            <button
+              class="flex w-full items-center gap-2 border-b border-outline-gray-2 pb-2 text-left text-sm font-medium"
+              :class="group.key === 'overdue' ? 'text-ink-red-4' : 'text-ink-gray-9'"
+              :aria-expanded="!collapsed.has(group.key)"
+              @click="toggleGroup(group.key)"
+            >
+              <LucideChevronRight
+                class="size-3.5 shrink-0 text-ink-gray-5 transition-transform"
+                :class="!collapsed.has(group.key) && 'rotate-90'"
+              />
+              <span
+                v-if="group.color"
+                class="size-2.5 shrink-0 rounded-[3px]"
+                :style="{ backgroundColor: group.color }"
+              />
+              <span
+                v-else-if="group.dot"
+                class="size-2 shrink-0 rounded-full"
+                :class="group.dot"
+              />
+              {{ group.label }}
+              <span class="font-normal tabular-nums text-ink-gray-5">
+                {{ group.total }}{{ group.key === 'done' && doneHasMore ? '+' : '' }}
               </span>
-            </h2>
-            <ul class="pb-panel overflow-hidden">
+            </button>
+
+            <ul v-show="!collapsed.has(group.key)">
               <li
-                v-for="task in reviews"
+                v-for="task in group.tasks"
                 :key="task.name"
-                class="flex cursor-pointer flex-wrap items-center gap-3 border-b border-outline-gray-1 bg-surface-white px-3 py-3 last:border-b-0 hover:bg-surface-gray-1"
+                class="group flex cursor-pointer items-start gap-3 border-b border-outline-gray-1 px-1 py-2.5 hover:bg-surface-gray-1 sm:items-center"
                 @click="openTask(task.name)"
               >
-                <AvatarStack :users="task.assignees || []" :max="2" size="sm" />
+                <button
+                  class="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border transition-colors sm:mt-0"
+                  :class="
+                    task.status === 'Completed'
+                      ? 'border-green-600 bg-green-600 text-white'
+                      : 'border-outline-gray-4 hover:border-ink-gray-6'
+                  "
+                  :aria-label="task.status === 'Completed' ? 'Reopen task' : 'Mark complete'"
+                  @click.stop="move(task, task.status === 'Completed' ? 'Open' : 'Completed')"
+                >
+                  <LucideCheck v-if="task.status === 'Completed'" class="size-2.5" />
+                </button>
+
+                <!-- the title carries the row; everything else is context -->
                 <div class="min-w-0 flex-1">
-                  <p class="truncate text-sm text-ink-gray-9">{{ task.subject }}</p>
-                  <p class="flex items-center gap-1.5 truncate text-xs text-ink-gray-5">
-                    <span
-                      v-if="task.project"
-                      class="size-2 shrink-0 rounded-[3px]"
-                      :style="{ backgroundColor: projectColor(task.project) }"
+                  <div class="flex min-w-0 items-center gap-2">
+                    <PriorityIcon
+                      v-if="isNotablePriority(task.priority)"
+                      :priority="task.priority"
+                      class="shrink-0"
                     />
-                    {{ task.project_title || 'No project' }}
-                    <template v-if="task.review_date">
-                      ·
-                      <span :class="reviewLate(task) ? 'font-medium text-ink-red-3' : ''">
-                        review by {{ dueLabel(task.review_date) }}
-                      </span>
+                    <LucideRepeat
+                      v-if="task.auto_repeat"
+                      class="size-3.5 shrink-0 text-ink-gray-4"
+                      aria-label="Repeating task"
+                    />
+                    <p
+                      class="min-w-0 text-base leading-snug sm:truncate"
+                      :class="isDone(task) ? 'text-ink-gray-5 line-through' : 'text-ink-gray-9'"
+                    >
+                      {{ task.subject }}
+                    </p>
+                    <Tooltip
+                      v-if="task.my_assignment === 'done' && !isDone(task)"
+                      text="You marked your part done; the task itself is still open"
+                    >
+                      <LucideCircleCheck class="size-3.5 shrink-0 text-ink-green-3" />
+                    </Tooltip>
+                  </div>
+                  <!-- phones: one muted line under the title -->
+                  <p class="mt-0.5 flex min-w-0 items-center gap-1.5 text-sm text-ink-gray-5 md:hidden">
+                    <span class="truncate">{{ task.project_title || 'No project' }}</span>
+                    <template v-if="task.exp_end_date">
+                      · <span class="shrink-0" :class="dueClass(task)">{{ dueLabel(task.exp_end_date) }}</span>
                     </template>
                   </p>
                 </div>
-                <div class="flex shrink-0 gap-2" @click.stop>
-                  <Button size="sm" :loading="reviewing === task.name" @click="signOff(task, 'Working')">
-                    Send back
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="solid"
-                    :loading="reviewing === task.name"
-                    @click="signOff(task, 'Completed')"
-                  >
-                    Approve
-                  </Button>
-                </div>
-              </li>
-            </ul>
-          </section>
 
-          <div class="mb-3 flex flex-wrap items-center gap-2">
-            <div class="relative min-w-0 basis-full sm:max-w-xs sm:flex-1 sm:basis-auto">
-              <LucideSearch
-                class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-gray-5"
-              />
-              <input
-                v-model="search"
-                type="search"
-                placeholder="Filter my tasks"
-                class="pb-input h-8 w-full pl-8 pr-2 text-sm"
-              />
-            </div>
-            <TabButtons
-              v-model="groupBy"
-              :buttons="[
-                { label: 'Due date', value: 'due' },
-                { label: 'Project', value: 'project' },
-                { label: 'Status', value: 'status' },
-              ]"
-            />
-            <label class="ml-auto flex items-center gap-1.5 text-sm text-ink-gray-6">
-              <input
-                v-model="includeCompleted"
-                type="checkbox"
-                class="rounded border-outline-gray-3 text-ink-gray-9 focus:ring-0"
-              />
-              Show done
-            </label>
-            <Tooltip text="Refresh">
-              <Button variant="ghost" :loading="loading" aria-label="Refresh" @click="load">
-                <LucideRefreshCw class="size-4" />
-              </Button>
-            </Tooltip>
-          </div>
-
-          <div v-if="loading && !myTasks.length" class="flex h-40 items-center justify-center">
-            <LoadingIndicator class="size-5 text-ink-gray-5" />
-          </div>
-
-          <EmptyState
-            v-else-if="!active.length && !includeCompleted"
-            title="Nothing on your plate"
-            description="Tasks assigned to you show up here as soon as someone adds you - including tasks you share with other people."
-          >
-            <template #icon><LucideCheckCheck class="size-5 text-ink-gray-5" /></template>
-            <div class="mt-2 flex gap-2">
-              <Button @click="$router.push({ name: 'Projects' })">Browse projects</Button>
-              <Button v-if="permissions.canCreateTask" variant="solid" @click="showNewTask = true">
-                New task
-              </Button>
-            </div>
-          </EmptyState>
-
-          <p v-else-if="!groups.length" class="py-10 text-center text-sm text-ink-gray-5">
-            No tasks match “{{ search }}”.
-          </p>
-
-          <div v-else class="flex flex-col gap-5">
-            <section v-for="group in paged.cap(groups)" :key="group.key">
-              <h2 class="mb-2 flex items-center gap-2 text-sm font-semibold text-ink-gray-8">
                 <span
-                  v-if="group.color"
-                  class="size-3 shrink-0 rounded-[4px]"
-                  :style="{ backgroundColor: group.color }"
-                />
-                <component
-                  :is="group.icon"
-                  v-else-if="group.icon"
-                  class="size-4"
-                  :class="group.iconClass"
-                />
-                <span
-                  v-else-if="group.dot"
-                  class="size-2 shrink-0 rounded-full"
-                  :class="group.dot"
-                />
-                {{ group.label }}
-                <span class="text-xs font-normal tabular-nums text-ink-gray-5">
-                  {{ group.total }}{{ group.key === 'done' && doneHasMore ? '+' : '' }}
+                  v-if="task.status === 'Pending Review' && task.review_date"
+                  class="hidden shrink-0 items-center gap-1 text-sm md:inline-flex"
+                  :class="reviewLate(task) ? 'text-ink-red-3' : 'text-ink-amber-3'"
+                >
+                  <LucideClipboardCheck class="size-3.5" />
+                  {{ dueLabel(task.review_date) }}
                 </span>
-              </h2>
 
-              <ul class="pb-panel overflow-hidden">
-                <li
-                  v-for="task in group.tasks"
-                  :key="task.name"
-                  class="flex cursor-pointer items-start gap-3 border-b border-outline-gray-1 bg-surface-white px-3 py-3 last:border-b-0 hover:bg-surface-gray-1 sm:items-center"
-                  @click="openTask(task.name)"
-                >
-                  <button
-                    class="mt-0.5 grid size-[18px] shrink-0 place-items-center rounded-full border transition-colors sm:mt-0"
-                    :class="
-                      task.status === 'Completed'
-                        ? 'border-green-600 bg-green-600 text-white'
-                        : 'border-outline-gray-4 hover:border-ink-gray-6'
-                    "
-                    :aria-label="task.status === 'Completed' ? 'Reopen task' : 'Mark complete'"
-                    @click.stop="move(task, task.status === 'Completed' ? 'Open' : 'Completed')"
-                  >
-                    <LucideCheck v-if="task.status === 'Completed'" class="size-3" />
-                  </button>
-
-                  <div class="min-w-0 flex-1">
-                    <div class="flex items-center gap-2">
-                      <PriorityIcon :priority="task.priority" class="shrink-0" />
-                      <LucideRepeat
-                        v-if="task.auto_repeat"
-                        class="size-3.5 shrink-0 text-ink-gray-5"
-                        aria-label="Repeating task"
-                      />
-                      <p
-                        class="min-w-0 text-sm leading-snug sm:truncate"
-                        :class="
-                          isDone(task) ? 'text-ink-gray-5 line-through' : 'text-ink-gray-9'
-                        "
-                      >
-                        {{ task.subject }}
-                      </p>
-                      <Tooltip
-                        v-if="task.my_assignment === 'done' && !isDone(task)"
-                        text="You marked your part done; the task itself is still open"
-                      >
-                        <Badge theme="green" variant="subtle" size="sm" class="shrink-0">
-                          Your part done
-                        </Badge>
-                      </Tooltip>
-                    </div>
-                    <p class="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-ink-gray-5">
-                      <span
-                        v-if="task.status === 'Pending Review' && task.review_date"
-                        class="inline-flex shrink-0 items-center gap-0.5"
-                        :class="reviewLate(task) ? 'font-medium text-ink-red-3' : 'text-ink-amber-3'"
-                      >
-                        <LucideClipboardCheck class="size-3" />
-                        review {{ dueLabel(task.review_date) }} ·
-                      </span>
-                      <span
-                        v-if="task.project"
-                        class="size-2 shrink-0 rounded-[3px]"
-                        :style="{ backgroundColor: projectColor(task.project) }"
-                      />
-                      <span class="truncate">
-                        {{ task.project_title || 'No project' }}
-                        <template v-if="task.epic"> · {{ task.epic.subject }}</template>
-                        <template v-if="task.type"> · {{ task.type }}</template>
-                      </span>
-                    </p>
-                    <!-- on phones the meta lives under the title instead of beside it -->
-                    <div class="mt-1.5 flex flex-wrap items-center gap-2 sm:hidden">
-                      <div @click.stop>
-                        <StatusPill
-                          :status="task.status"
-                          editable
-                          @change="(s) => move(task, s)"
-                        />
-                      </div>
-                      <span v-if="task.exp_end_date" class="text-xs" :class="dueClass(task)">
-                        {{ dueLabel(task.exp_end_date) }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <!-- shared work: who else is on it -->
-                  <Tooltip v-if="others(task).length" :text="sharedLabel(task)">
-                    <span class="hidden shrink-0 items-center gap-1 sm:flex">
-                      <LucideUsers class="size-3.5 text-ink-gray-4" />
-                      <AvatarStack :users="others(task)" :max="3" size="xs" />
-                    </span>
-                  </Tooltip>
-
-                  <span
-                    v-if="task.exp_end_date"
-                    class="hidden w-16 shrink-0 text-right text-xs sm:inline"
-                    :class="dueClass(task)"
-                  >
-                    {{ dueLabel(task.exp_end_date) }}
+                <Tooltip v-if="others(task).length" :text="sharedLabel(task)">
+                  <span class="hidden shrink-0 md:flex">
+                    <AvatarStack :users="others(task)" :max="3" size="xs" />
                   </span>
-                  <div class="hidden w-28 shrink-0 sm:block" @click.stop>
-                    <StatusPill :status="task.status" editable @change="(s) => move(task, s)" />
-                  </div>
-                </li>
-              </ul>
-            </section>
+                </Tooltip>
 
-            <LoadMore
-              v-if="hasMoreRows || (includeCompleted && doneHasMore)"
-              :loading="loadingDone"
-              @more="onMore"
-            />
-          </div>
-        </section>
-
-        <!-- side rail -->
-        <aside class="flex flex-col gap-4">
-          <section class="pb-panel p-4">
-            <div class="mb-3 flex items-center justify-between">
-              <h2 class="text-sm font-semibold text-ink-gray-9">Your projects</h2>
-              <router-link
-                :to="{ name: 'Projects' }"
-                class="text-xs text-ink-gray-5 hover:text-ink-gray-8"
-              >
-                All projects
-              </router-link>
-            </div>
-            <ul class="flex flex-col gap-1">
-              <li v-for="project in myProjects" :key="project.name">
-                <router-link
-                  :to="{ name: 'Board', params: { project: project.name } }"
-                  class="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-gray-2"
+                <span
+                  class="hidden w-56 shrink-0 items-center gap-1.5 text-sm text-ink-gray-5 md:flex"
+                  :title="contextOf(task)"
                 >
                   <span
-                    class="grid size-8 shrink-0 place-items-center rounded-lg"
-                    :style="{
-                      backgroundColor: `${projectColor(project.name)}26`,
-                      color: projectColor(project.name),
-                    }"
-                  >
-                    <LucideFolderKanban class="size-4" />
+                    v-if="task.project"
+                    class="size-2 shrink-0 rounded-[3px]"
+                    :style="{ backgroundColor: projectColor(task.project) }"
+                  />
+                  <span class="truncate">
+                    {{ task.project_title || 'No project' }}
+                    <span v-if="task.epic" class="text-ink-gray-4"> · {{ task.epic.subject }}</span>
                   </span>
-                  <div class="min-w-0 flex-1">
-                    <p class="truncate text-sm font-medium text-ink-gray-8">
-                      {{ project.project_name }}
-                    </p>
-                    <div class="mt-1 flex items-center gap-2">
-                      <span class="h-1 flex-1 overflow-hidden rounded-full bg-surface-gray-2">
-                        <span
-                          class="block h-full rounded-full bg-surface-green-3"
-                          :style="{ width: `${project.percent_complete || 0}%` }"
-                        />
-                      </span>
-                      <span class="shrink-0 text-[11px] tabular-nums text-ink-gray-5">
-                        {{ project.mine }} open for you
-                      </span>
-                    </div>
-                  </div>
-                </router-link>
-              </li>
-              <li v-if="!myProjects.length" class="text-xs text-ink-gray-5">
-                You are not on any open project yet.
-              </li>
-            </ul>
-            <button
-              v-if="permissions.canCreateProject"
-              class="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-outline-gray-3 py-2 text-sm text-ink-gray-6 transition-colors hover:border-outline-gray-4 hover:text-ink-gray-8"
-              @click="showNewProject = true"
-            >
-              <LucidePlus class="size-4" />
-              Create a project
-            </button>
-          </section>
+                </span>
 
-          <section class="pb-panel p-4">
-            <h2 class="mb-3 text-sm font-semibold text-ink-gray-9">Recently completed</h2>
-            <ul class="flex flex-col gap-2.5">
-              <li
-                v-for="task in recentlyCompleted.slice(0, 6)"
-                :key="task.name"
-                class="flex cursor-pointer items-start gap-2"
-                @click="openTask(task.name)"
-              >
-                <LucideCircleCheck class="mt-0.5 size-4 shrink-0 text-ink-green-3" />
-                <div class="min-w-0">
-                  <p class="truncate text-sm text-ink-gray-8 hover:underline">
-                    {{ task.subject }}
-                  </p>
-                  <p class="truncate text-xs text-ink-gray-5">
-                    {{ task.project_title || 'No project' }} ·
-                    {{ timeAgo(task.completed_on || task.modified) }}
-                  </p>
+                <span class="hidden w-20 shrink-0 text-right text-sm md:inline" :class="dueClass(task)">
+                  {{ task.exp_end_date ? dueLabel(task.exp_end_date) : '' }}
+                </span>
+                <div class="shrink-0 md:w-28" @click.stop>
+                  <StatusPill :status="task.status" editable @change="(s) => move(task, s)" />
                 </div>
               </li>
-              <li v-if="!recentlyCompleted.length" class="text-xs text-ink-gray-5">
-                Nothing finished in the last two weeks.
-              </li>
             </ul>
           </section>
 
-          <section class="pb-panel p-4">
-            <h2 class="mb-2 text-sm font-semibold text-ink-gray-9">Quick links</h2>
-            <div class="flex flex-col">
-              <a
-                :href="`/desk/todo?allocated_to=${encodeURIComponent(user.name || '')}`"
-                target="_blank"
-                rel="noopener"
-                class="-mx-2 flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-ink-gray-7 hover:bg-surface-gray-2"
-              >
-                <LucideListChecks class="size-4 text-ink-gray-5" />
-                My ToDo list in Desk
-                <LucideArrowUpRight class="ml-auto size-3.5 text-ink-gray-4" />
-              </a>
-              <a
-                href="/desk/timesheet"
-                target="_blank"
-                rel="noopener"
-                class="-mx-2 flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm text-ink-gray-7 hover:bg-surface-gray-2"
-              >
-                <LucideTimer class="size-4 text-ink-gray-5" />
-                Timesheets in Desk
-                <LucideArrowUpRight class="ml-auto size-3.5 text-ink-gray-4" />
-              </a>
-              <button
-                class="-mx-2 flex items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm text-ink-gray-7 hover:bg-surface-gray-2"
-                @click="emitBus(EVENTS.SHOW_SHORTCUTS)"
-              >
-                <LucideKeyboard class="size-4 text-ink-gray-5" />
-                Keyboard shortcuts
-              </button>
-            </div>
-          </section>
-        </aside>
+          <LoadMore
+            v-if="hasMoreRows || (includeCompleted && doneHasMore)"
+            :loading="loadingDone"
+            @more="onMore"
+          />
+        </div>
       </div>
-    </div>
     </div>
 
     <CreateTaskDialog v-model="showNewTask" @created="load" />
@@ -413,7 +273,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Badge, Button, LoadingIndicator, TabButtons, Tooltip, toast } from 'frappe-ui'
+import { Button, Dropdown, LoadingIndicator, TabButtons, Tooltip, toast } from 'frappe-ui'
 import AvatarStack from '@/components/AvatarStack.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import CreateProjectDialog from '@/components/CreateProjectDialog.vue'
@@ -421,24 +281,17 @@ import CreateTaskDialog from '@/components/CreateTaskDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import LoadMore from '@/components/LoadMore.vue'
 import PriorityIcon from '@/components/PriorityIcon.vue'
-import StatTile from '@/components/StatTile.vue'
 import StatusPill from '@/components/StatusPill.vue'
 import api from '@/data/api'
 import { usePaged } from '@/composables/usePaged'
-import { emit as emitBus, EVENTS, on } from '@/data/bus'
+import { EVENTS, on } from '@/data/bus'
 import { batched, onListUpdate } from '@/data/realtime'
-import { loadProjects, projects } from '@/data/projects'
+import { loadProjects } from '@/data/projects'
 import { boardStatuses, permissions, user } from '@/data/session'
-import { projectColor, statusStyle } from '@/utils/constants'
-import { dayjs, dueLabel, isOverdue, timeAgo } from '@/utils/format'
+import { isNotablePriority, projectColor, statusStyle } from '@/utils/constants'
+import { dayjs, dueLabel, isOverdue } from '@/utils/format'
 import { openTask } from '@/utils/taskPanel'
 
-import LucideAlarmClock from '~icons/lucide/alarm-clock'
-import LucideCalendarDays from '~icons/lucide/calendar-days'
-import LucideCalendarRange from '~icons/lucide/calendar-range'
-import LucideCalendarClock from '~icons/lucide/calendar-clock'
-import LucideCircleDashed from '~icons/lucide/circle-dashed'
-import LucideCircleCheck from '~icons/lucide/circle-check'
 
 /** How far back "recently completed" reaches. */
 const RECENT_DAYS = 14
@@ -474,6 +327,44 @@ watch(groupBy, (value) => {
     // private mode: the choice just isn't remembered
   }
 })
+
+/** Groups folded away, remembered per browser. */
+const collapsed = ref(new Set(readCollapsed()))
+function readCollapsed() {
+  try {
+    return JSON.parse(localStorage.getItem('pb:mywork-collapsed') || '[]')
+  } catch {
+    return []
+  }
+}
+function toggleGroup(key) {
+  const next = new Set(collapsed.value)
+  next.has(key) ? next.delete(key) : next.add(key)
+  collapsed.value = next
+  try {
+    localStorage.setItem('pb:mywork-collapsed', JSON.stringify([...next]))
+  } catch {
+    // private mode
+  }
+}
+
+/** Things you reach for now and then, kept out of the way. */
+const moreMenu = computed(() => [
+  ...(permissions.value.canCreateProject
+    ? [{ label: 'New project', icon: 'folder-plus', onClick: () => (showNewProject.value = true) }]
+    : []),
+  {
+    label: 'My ToDo list in Desk',
+    icon: 'external-link',
+    onClick: () =>
+      window.open(`/desk/todo?allocated_to=${encodeURIComponent(user.value?.name || '')}`, '_blank'),
+  },
+  {
+    label: 'Timesheets in Desk',
+    icon: 'external-link',
+    onClick: () => window.open('/desk/timesheet', '_blank'),
+  },
+])
 
 async function load() {
   loading.value = true
@@ -580,11 +471,11 @@ const buckets = computed(() => {
 })
 
 const DUE_GROUPS = [
-  { key: 'overdue', label: 'Overdue', icon: LucideAlarmClock, iconClass: 'text-ink-red-3' },
-  { key: 'today', label: 'Due today', icon: LucideCalendarDays, iconClass: 'text-ink-gray-6' },
-  { key: 'week', label: 'Next 7 days', icon: LucideCalendarRange, iconClass: 'text-ink-gray-6' },
-  { key: 'later', label: 'Later', icon: LucideCalendarClock, iconClass: 'text-ink-gray-6' },
-  { key: 'someday', label: 'No due date', icon: LucideCircleDashed, iconClass: 'text-ink-gray-5' },
+  { key: 'overdue', label: 'Overdue' },
+  { key: 'today', label: 'Due today' },
+  { key: 'week', label: 'Next 7 days' },
+  { key: 'later', label: 'Later' },
+  { key: 'someday', label: 'No due date' },
 ]
 
 const groups = computed(() => {
@@ -599,8 +490,6 @@ const groups = computed(() => {
           key: key || '__none',
           label: task.project_title || key || 'No project',
           color: key ? projectColor(key) : null,
-          icon: key ? null : LucideCircleDashed,
-          iconClass: 'text-ink-gray-5',
           tasks: [],
         })
       }
@@ -632,8 +521,6 @@ const groups = computed(() => {
     out.push({
       key: 'done',
       label: 'Done',
-      icon: LucideCircleCheck,
-      iconClass: 'text-ink-green-3',
       tasks: rows.filter(isDone),
     })
   }
@@ -652,36 +539,28 @@ function onMore() {
   else if (includeCompleted.value && doneHasMore.value) loadDone()
 }
 
-/** Projects you have open work in, then ones you are a member of, busiest first. */
-const myProjects = computed(() => {
-  const counts = new Map()
-  for (const task of active.value) {
-    if (task.project) counts.set(task.project, (counts.get(task.project) || 0) + 1)
-  }
-  const me = user.value?.name
-  return projects.value
-    .filter(
-      (p) =>
-        ['Open', 'On hold'].includes(p.status) &&
-        (counts.has(p.name) || (p.members || []).some((m) => m.name === me)),
-    )
-    .map((p) => ({ ...p, mine: counts.get(p.name) || 0 }))
-    .sort((a, b) => b.mine - a.mine)
-    .slice(0, 6)
-})
-
 const todayLabel = dayjs().format('dddd, D MMMM')
 
-const summaryLine = computed(() => {
-  const open = active.value.length
-  if (!open) return 'Your queue is clear.'
-  const parts = [`${open} open ${open === 1 ? 'task' : 'tasks'}`]
-  if (buckets.value.overdue.length) parts.push(`${buckets.value.overdue.length} overdue`)
-  const soon = buckets.value.today.length + buckets.value.week.length
-  if (soon) parts.push(`${soon} due this week`)
-  const last = parts.pop()
-  return `You have ${parts.length ? `${parts.join(', ')} and ${last}` : last}.`
+/** What needs you first, in a few words. */
+const headline = computed(() => {
+  const late = buckets.value.overdue.length
+  const today = buckets.value.today.length
+  const week = buckets.value.week.length
+  const parts = []
+  if (late) parts.push(`${late} overdue`)
+  if (today) parts.push(`${today} due today`)
+  if (week) parts.push(`${week} due this week`)
+  return parts.length ? parts.join(', ') : 'Nothing due this week'
 })
+
+const contextLine = computed(() => {
+  const open = active.value.length
+  const done = recentlyCompleted.value.length
+  return `${open} open ${open === 1 ? 'task' : 'tasks'} · ${done} done in the last ${RECENT_DAYS} days`
+})
+
+const contextOf = (task) =>
+  [task.project_title || 'No project', task.epic?.subject].filter(Boolean).join(' · ')
 
 async function move(task, status) {
   const previous = task.status

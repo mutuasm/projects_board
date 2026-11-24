@@ -22,6 +22,9 @@ export const PRIORITY_STYLES = {
 
 export const PRIORITY_ORDER = ['Urgent', 'High', 'Medium', 'Low']
 
+/** Only these earn a mark on a card or row; Medium and Low are the quiet default. */
+export const isNotablePriority = (priority) => ['Urgent', 'High'].includes(priority)
+
 export const PROJECT_STATUS_STYLES = {
   Open: { theme: 'blue' },
   'On hold': { theme: 'orange' },

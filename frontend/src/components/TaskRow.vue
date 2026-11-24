@@ -49,7 +49,7 @@
         class="size-3.5 shrink-0 text-ink-amber-3"
       />
       <span
-        v-else
+        v-else-if="task.type"
         class="shrink-0 text-[11px] font-medium uppercase tracking-wide"
         :class="typeStyle.text"
       >
@@ -81,7 +81,7 @@
       >
         {{ task.tags.join(' · ') }}
       </span>
-      <span class="hidden shrink-0 font-mono text-xs text-ink-gray-4 sm:inline">
+      <span class="pb-hover-reveal hidden shrink-0 font-mono text-xs text-ink-gray-4 sm:inline">
         {{ task.name }}
       </span>
     </div>

@@ -1,16 +1,16 @@
 <template>
   <Dropdown v-if="editable" :options="statusOptions" placement="bottom-start">
     <button
-      class="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium text-ink-gray-7 transition-colors hover:bg-surface-gray-2"
+      class="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs text-ink-gray-7 transition-colors hover:bg-surface-gray-2"
     >
       <span class="size-1.5 shrink-0 rounded-full" :class="style.dot" />
       {{ style.label || status }}
-      <LucideChevronDown class="size-3 text-ink-gray-5" />
+      <LucideChevronDown class="pb-hover-reveal size-3 text-ink-gray-5" />
     </button>
   </Dropdown>
   <span
     v-else
-    class="inline-flex items-center gap-1.5 text-xs font-medium text-ink-gray-7"
+    class="inline-flex items-center gap-1.5 text-xs text-ink-gray-7"
   >
     <span class="size-1.5 shrink-0 rounded-full" :class="style.dot" />
     {{ style.label || status }}

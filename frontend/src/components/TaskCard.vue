@@ -4,19 +4,6 @@
     :class="selected ? 'pb-card-selected' : ''"
     @click="openTask(task.name)"
   >
-    <!-- epic chip: a colour swatch plus the parent's name, Jira style -->
-    <button
-      v-if="task.epic"
-      class="mb-1.5 flex max-w-full items-center gap-1.5 text-[11px] font-medium text-ink-gray-6 hover:text-ink-gray-8"
-      @click.stop="$emit('filter-epic', task.epic.name)"
-    >
-      <span
-        class="size-2 shrink-0 rounded-[3px]"
-        :style="{ backgroundColor: task.epic.color || '#9ca3af' }"
-      />
-      <span class="truncate">{{ task.epic.subject }}</span>
-    </button>
-
     <div class="flex items-start gap-2">
       <LucideFlag
         v-if="task.is_milestone"
@@ -25,7 +12,7 @@
       <Tooltip v-if="task.auto_repeat" text="Repeating task">
         <LucideRepeat class="mt-0.5 size-3.5 shrink-0 text-ink-gray-5" />
       </Tooltip>
-      <p class="flex-1 text-sm leading-snug text-ink-gray-8">{{ task.subject }}</p>
+      <p class="flex-1 text-sm leading-snug text-ink-gray-9">{{ task.subject }}</p>
       <Tooltip v-if="isTiming" text="Timer running on this task">
         <span class="relative mt-1 flex size-2 shrink-0">
           <span
@@ -41,9 +28,22 @@
       {{ task.tags.join(' · ') }}
     </p>
 
-    <!-- one quiet meta line instead of a wall of badges -->
-    <div class="mt-2.5 flex items-center gap-2">
-      <Tooltip :text="`Type: ${task.type || 'none'}`">
+    <!-- one quiet meta line: where it belongs, then only what's unusual -->
+    <div class="mt-2.5 flex min-w-0 items-center gap-2">
+      <button
+        v-if="task.epic"
+        class="flex min-w-0 items-center gap-1.5 text-xs text-ink-gray-5 hover:text-ink-gray-8"
+        :title="`Show only ${task.epic.subject}`"
+        @click.stop="$emit('filter-epic', task.epic.name)"
+      >
+        <span
+          class="size-2 shrink-0 rounded-[3px]"
+          :style="{ backgroundColor: task.epic.color || '#9ca3af' }"
+        />
+        <span class="truncate">{{ task.epic.subject }}</span>
+      </button>
+
+      <Tooltip v-if="task.type" :text="`Type: ${task.type}`">
         <span
           class="shrink-0 text-[11px] font-medium uppercase tracking-wide"
           :class="typeStyle.text"
@@ -52,7 +52,7 @@
         </span>
       </Tooltip>
 
-      <PriorityIcon :priority="task.priority" />
+      <PriorityIcon v-if="isNotablePriority(task.priority)" :priority="task.priority" />
 
       <Tooltip
         v-if="task.status === 'Pending Review' && task.review_date"
@@ -118,7 +118,7 @@ import { computed } from 'vue'
 import { Tooltip } from 'frappe-ui'
 import AvatarStack from './AvatarStack.vue'
 import PriorityIcon from './PriorityIcon.vue'
-import { taskTypeStyle } from '@/utils/constants'
+import { isNotablePriority, taskTypeStyle } from '@/utils/constants'
 import { dayjs, dueLabel, formatDate, formatNumber, isOverdue } from '@/utils/format'
 import { openTask } from '@/utils/taskPanel'
 import { isTimingTask } from '@/data/timer'
