@@ -120,6 +120,7 @@
       :project="project"
       :default-status="quickAddStatus"
       :default-is-group="creatingEpic"
+      :default-parent="creatingEpic ? null : selectedEpicParent"
       @created="onCreated"
     />
   </div>
@@ -143,6 +144,7 @@ import {
   loadEpics,
   loading,
   reloadTasks,
+  selectedEpicParent,
   tasks,
   upsertTask,
 } from '@/data/board'

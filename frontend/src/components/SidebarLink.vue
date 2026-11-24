@@ -36,17 +36,17 @@ const props = defineProps({
 })
 
 const slots = useSlots()
-const activeClass = '!bg-surface-white font-medium !text-ink-gray-9 shadow-sm'
+const activeClass = '!bg-surface-selected shadow-sm'
 
 const classes = computed(() => [
-  'flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-base text-ink-gray-7 transition-colors hover:bg-surface-gray-2',
+  'flex h-7.5 w-full items-center gap-2 rounded px-2 text-left text-sm text-ink-gray-8 transition-colors hover:bg-surface-gray-2',
   props.collapsed && 'justify-center',
   props.active && activeClass,
 ])
 
 /** Icon, label and whatever sits on the right: the same for links and buttons. */
 function SidebarLinkBody() {
-  const icon = h('span', { class: 'relative grid size-4 shrink-0 place-items-center text-ink-gray-7' }, [
+  const icon = h('span', { class: 'relative grid size-4 shrink-0 place-items-center text-ink-gray-8' }, [
     slots.default?.(),
     // a dot stands in for the count while the sidebar is icons-only
     props.collapsed && props.badge

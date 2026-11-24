@@ -46,9 +46,9 @@
               >
                 {{ initials(brand.name) }}
               </span>
-              <span v-if="!iconsOnly" class="min-w-0 flex-1 leading-tight">
-                <span class="block truncate text-base font-medium text-ink-gray-9">{{ brand.name }}</span>
-                <span class="block truncate text-sm text-ink-gray-6">{{ user.full_name }}</span>
+              <span v-if="!iconsOnly" class="min-w-0 flex-1">
+                <span class="block truncate text-base font-medium leading-none text-ink-gray-9">{{ brand.name }}</span>
+                <span class="mt-1 block truncate text-sm leading-none text-ink-gray-7">{{ user.full_name }}</span>
               </span>
               <LucideChevronDown v-if="!iconsOnly" class="size-4 shrink-0 text-ink-gray-5" />
             </button>
@@ -105,7 +105,7 @@
     <div v-if="!iconsOnly" class="mt-4 flex min-h-0 flex-1 flex-col px-2">
       <div class="group flex h-7 items-center gap-1 px-2">
         <button
-          class="flex min-w-0 flex-1 items-center gap-1.5 text-sm text-ink-gray-5 hover:text-ink-gray-7"
+          class="flex min-w-0 flex-1 items-center gap-1.5 text-base text-ink-gray-5 hover:text-ink-gray-7"
           :aria-expanded="showProjects"
           @click="toggleProjects"
         >
@@ -134,10 +134,10 @@
           v-for="project in recentProjects"
           :key="project.name"
           :to="{ name: 'Board', params: { project: project.name } }"
-          class="flex h-8 shrink-0 items-center gap-2 rounded-md px-2 text-base text-ink-gray-7 transition-colors hover:bg-surface-gray-2"
+          class="flex h-7.5 shrink-0 items-center gap-2 rounded px-2 text-sm text-ink-gray-8 transition-colors hover:bg-surface-gray-2"
           :class="
             route.params.project === project.name &&
-            '!bg-surface-white font-medium !text-ink-gray-9 shadow-sm'
+            '!bg-surface-selected shadow-sm'
           "
         >
           <span class="grid size-4 shrink-0 place-items-center">

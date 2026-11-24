@@ -167,6 +167,7 @@
     <CreateTaskDialog
       v-model="showNewTask"
       :project="project"
+      :default-parent="selectedEpicParent"
       @created="onTaskCreated"
     />
 
@@ -206,6 +207,7 @@ import {
   members,
   projectDoc as doc,
   reloadTasks,
+  selectedEpicParent,
   upsertTask,
   watchBoardLive,
 } from '@/data/board'

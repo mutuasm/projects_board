@@ -18,6 +18,15 @@ export const tasks = ref([])
 /** Group tasks (epics) for the board's epic rail. */
 export const epics = ref([])
 export const loading = ref(false)
+
+/**
+ * The epic picked in the epic rail, as the parent for tasks created while it is
+ * picked. Not a closed one: ERPNext won't put an open task under a finished parent.
+ */
+export const selectedEpicParent = computed(() => {
+  const epic = filters.epic && epics.value.find((e) => e.name === filters.epic)
+  return epic && !['Completed', 'Cancelled'].includes(epic.status) ? epic.name : null
+})
 export const error = ref(null)
 
 export const filters = reactive({
