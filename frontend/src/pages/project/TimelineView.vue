@@ -11,7 +11,7 @@
       <div class="flex shrink-0 items-center gap-2 border-b border-outline-gray-2 px-4 py-2 sm:px-6">
         <TabButtons
           v-model="groupBy"
-          :buttons="[
+          :options="[
             { label: 'By assignee', value: 'assignee' },
             { label: 'All tasks', value: 'none' },
           ]"
@@ -25,10 +25,10 @@
       <div ref="scroller" class="thin-scrollbar min-h-0 flex-1 overflow-auto">
         <div class="relative min-h-full" :style="{ width: `${labelWidth + chartWidth}px` }">
           <!-- ruler: months over ISO weeks -->
-          <div class="sticky top-0 z-20 flex border-b border-outline-gray-2 bg-surface-white">
+          <div class="sticky top-0 z-20 flex border-b border-outline-gray-2 bg-surface-base">
             <div
               v-if="labelWidth"
-              class="sticky left-0 z-30 shrink-0 border-r border-outline-gray-2 bg-surface-white"
+              class="sticky left-0 z-30 shrink-0 border-r border-outline-gray-2 bg-surface-base"
               :style="{ width: `${labelWidth}px` }"
             />
             <div class="relative h-16" :style="{ width: `${chartWidth}px` }">
@@ -39,7 +39,7 @@
                 :style="{ left: `${month.offset * dayWidth}px`, width: `${month.days * dayWidth}px` }"
               >
                 <span
-                  class="sticky whitespace-nowrap px-2 text-sm font-medium text-ink-gray-8"
+                  class="sticky whitespace-nowrap px-2 text-sm-medium text-ink-gray-8"
                   :style="{ left: `${labelWidth}px` }"
                 >
                   {{ month.label }}
@@ -86,7 +86,7 @@
           >
             <div
               v-if="labelWidth"
-              class="sticky left-0 z-10 flex shrink-0 items-start gap-2.5 border-r border-outline-gray-2 bg-surface-white px-3 py-4 sm:px-5"
+              class="sticky left-0 z-10 flex shrink-0 items-start gap-2.5 border-r border-outline-gray-2 bg-surface-base px-3 py-4 sm:px-5"
               :style="{ width: `${labelWidth}px` }"
             >
               <UserAvatar v-if="lane.user" :user="lane.user" size="lg" />
@@ -97,7 +97,7 @@
                 <LucideUser class="size-3.5" />
               </span>
               <div class="min-w-0 pt-0.5">
-                <p class="truncate text-sm font-medium text-ink-gray-9">{{ lane.label }}</p>
+                <p class="truncate text-sm-medium text-ink-gray-9">{{ lane.label }}</p>
                 <p class="text-xs text-ink-gray-5">
                   {{ lane.cards.length }} {{ lane.cards.length === 1 ? 'task' : 'tasks' }}
                 </p>
@@ -110,7 +110,7 @@
                 :key="card.task.name"
                 role="button"
                 tabindex="0"
-                class="pb-card absolute flex cursor-pointer flex-col justify-center gap-1.5 overflow-hidden !rounded-xl px-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-outline-gray-3"
+                class="pb-card absolute flex cursor-pointer flex-col justify-center gap-1.5 overflow-hidden !rounded-7 px-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-outline-gray-3"
                 :style="{
                   left: `${card.left}px`,
                   width: `${card.width}px`,
@@ -122,11 +122,11 @@
               >
                 <div class="flex min-w-0 items-center gap-2">
                   <button
-                    class="grid size-4 shrink-0 place-items-center rounded border transition-colors"
+                    class="grid size-4 shrink-0 place-items-center rounded-4 border transition-colors"
                     :class="
                       card.task.status === 'Completed'
                         ? 'border-green-600 bg-green-600 text-white'
-                        : 'border-outline-gray-4 hover:border-outline-gray-5'
+                        : 'border-outline-gray-4 hover:border-outline-gray-7'
                     "
                     :aria-label="card.task.status === 'Completed' ? 'Reopen task' : 'Mark complete'"
                     @click.stop="toggleComplete(card.task)"
@@ -135,10 +135,10 @@
                   </button>
                   <LucideFlag
                     v-if="card.task.is_milestone"
-                    class="size-3.5 shrink-0 text-ink-amber-3"
+                    class="size-3.5 shrink-0 text-ink-amber-5"
                   />
                   <span
-                    class="truncate text-sm font-medium"
+                    class="truncate text-sm-medium"
                     :class="
                       card.task.status === 'Completed'
                         ? 'text-ink-gray-5 line-through'
@@ -152,7 +152,7 @@
                   <AvatarStack :users="card.task.assignees || []" :max="2" size="xs" />
                   <span
                     class="truncate text-xs"
-                    :class="isOverdue(card.task.exp_end_date, card.task.status) ? 'font-medium text-ink-red-3' : 'text-ink-gray-5'"
+                    :class="isOverdue(card.task.exp_end_date, card.task.status) ? 'font-medium text-ink-red-5' : 'text-ink-gray-5'"
                   >
                     {{ card.dates }}
                   </span>

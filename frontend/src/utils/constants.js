@@ -6,7 +6,7 @@
 export const STATUS_STYLES = {
   Open: { theme: 'gray', dot: 'bg-gray-400', label: 'To Do' },
   Working: { theme: 'blue', dot: 'bg-blue-500', label: 'In Progress' },
-  'Pending Review': { theme: 'orange', dot: 'bg-orange-500', label: 'In Review' },
+  'Pending Review': { theme: 'amber', dot: 'bg-orange-500', label: 'In Review' },
   Overdue: { theme: 'red', dot: 'bg-red-500', label: 'Overdue' },
   Completed: { theme: 'green', dot: 'bg-green-500', label: 'Done' },
   Cancelled: { theme: 'gray', dot: 'bg-gray-300', label: 'Cancelled' },
@@ -14,10 +14,10 @@ export const STATUS_STYLES = {
 }
 
 export const PRIORITY_STYLES = {
-  Urgent: { theme: 'red', icon: 'chevrons-up', text: 'text-ink-red-3' },
-  High: { theme: 'orange', icon: 'chevron-up', text: 'text-ink-amber-3' },
-  Medium: { theme: 'blue', icon: 'minus', text: 'text-ink-blue-3' },
-  Low: { theme: 'gray', icon: 'chevron-down', text: 'text-ink-gray-5' },
+  Urgent: { theme: 'red', icon: 'lucide-chevrons-up', text: 'text-ink-red-5' },
+  High: { theme: 'amber', icon: 'lucide-chevron-up', text: 'text-ink-amber-5' },
+  Medium: { theme: 'blue', icon: 'lucide-minus', text: 'text-ink-blue-5' },
+  Low: { theme: 'gray', icon: 'lucide-chevron-down', text: 'text-ink-gray-5' },
 }
 
 export const PRIORITY_ORDER = ['Urgent', 'High', 'Medium', 'Low']
@@ -27,7 +27,7 @@ export const isNotablePriority = (priority) => ['Urgent', 'High'].includes(prior
 
 export const PROJECT_STATUS_STYLES = {
   Open: { theme: 'blue' },
-  'On hold': { theme: 'orange' },
+  'On hold': { theme: 'amber' },
   Completed: { theme: 'green' },
   Cancelled: { theme: 'gray' },
 }
@@ -45,7 +45,7 @@ export function statusLabel(status) {
 
 export function priorityStyle(priority) {
   return (
-    PRIORITY_STYLES[priority] || { theme: 'gray', icon: 'minus', text: 'text-ink-gray-5' }
+    PRIORITY_STYLES[priority] || { theme: 'gray', icon: 'lucide-minus', text: 'text-ink-gray-5' }
   )
 }
 
@@ -61,9 +61,9 @@ export function sortByPriority(a, b) {
  * site is likely to have and falls back to the first three letters otherwise.
  */
 const TASK_TYPE_STYLES = {
-  Bug: { short: 'BUG', text: 'text-ink-red-3' },
-  Story: { short: 'STORY', text: 'text-ink-green-3' },
-  Epic: { short: 'EPIC', text: 'text-ink-blue-3' },
+  Bug: { short: 'BUG', text: 'text-ink-red-5' },
+  Story: { short: 'STORY', text: 'text-ink-green-5' },
+  Epic: { short: 'EPIC', text: 'text-ink-blue-5' },
   Task: { short: 'TASK', text: 'text-ink-gray-5' },
   'Sub-task': { short: 'SUB', text: 'text-ink-gray-5' },
 }

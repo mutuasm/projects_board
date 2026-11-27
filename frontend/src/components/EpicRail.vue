@@ -5,7 +5,7 @@
   >
     <header class="flex items-center gap-1 px-2 py-2.5">
       <button
-        class="tap-target grid place-items-center rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2"
+        class="tap-target grid place-items-center rounded-4 p-1 text-ink-gray-5 hover:bg-surface-gray-2"
         :title="collapsed ? 'Show epics' : 'Hide epics'"
         @click="$emit('toggle')"
       >
@@ -13,13 +13,13 @@
       </button>
       <span
         v-if="!collapsed"
-        class="text-xs font-medium uppercase tracking-wide text-ink-gray-5"
+        class="text-xs-medium uppercase tracking-wide text-ink-gray-5"
       >
         Epics
       </span>
       <button
         v-if="!collapsed && canCreate"
-        class="tap-target ml-auto grid place-items-center rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2"
+        class="tap-target ml-auto grid place-items-center rounded-4 p-1 text-ink-gray-5 hover:bg-surface-gray-2"
         aria-label="New epic"
         @click="$emit('create')"
       >
@@ -29,7 +29,7 @@
 
     <div v-if="!collapsed" class="thin-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pb-3">
       <button
-        class="mb-0.5 flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition-colors"
+        class="mb-0.5 flex w-full items-center gap-2 rounded-4 px-2 py-1.5 text-left text-sm transition-colors"
         :class="
           !modelValue
             ? 'bg-surface-gray-3 font-medium text-ink-gray-9'
@@ -45,7 +45,7 @@
       <button
         v-for="epic in epics"
         :key="epic.name"
-        class="mb-0.5 flex w-full flex-col gap-1.5 rounded px-2 py-1.5 text-left transition-colors"
+        class="mb-0.5 flex w-full flex-col gap-1.5 rounded-4 px-2 py-1.5 text-left transition-colors"
         :class="
           modelValue === epic.name
             ? 'bg-surface-gray-3'
@@ -75,9 +75,9 @@
             class="block h-full rounded-full transition-all"
             :style="{
               width: `${epic.percent}%`,
-              backgroundColor: epic.color || 'rgb(var(--surface-green-3))',
+              backgroundColor: epic.color || 'var(--surface-green-7)',
             }"
-            :class="epic.color ? '' : 'bg-surface-green-3'"
+            :class="epic.color ? '' : 'bg-surface-green-7'"
           />
         </span>
       </button>

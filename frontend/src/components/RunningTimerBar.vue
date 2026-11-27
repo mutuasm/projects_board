@@ -8,7 +8,7 @@
   >
     <div
       v-if="activeTimer"
-      class="fixed bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-outline-gray-3 bg-surface-white px-3 py-2 shadow-md"
+      class="fixed bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-outline-gray-3 bg-surface-base px-3 py-2 shadow-md"
       style="margin-bottom: env(safe-area-inset-bottom)"
     >
       <span class="relative flex size-2 shrink-0">

@@ -9,7 +9,7 @@ body,
 /* Paint the ground explicitly so the dark theme has no white gaps behind the
    app shell (html/body are otherwise transparent). */
 body {
-  @apply bg-surface-white text-ink-gray-8;
+  @apply bg-surface-base text-ink-gray-8;
 }
 
 /* Stop pull-to-refresh and rubber-banding fighting the board's own scrolling. */
@@ -95,6 +95,9 @@ body {
  * `!important` is required to beat reka-ui's inline z-index.
  */
 .dialog-overlay,
+/* frappe-ui 1.x renders the dialog box in its own layer after the overlay;
+   both must move up together or the overlay covers the box */
+.dialog-scroll-container,
 [data-reka-popper-content-wrapper],
 [data-radix-popper-content-wrapper] {
   z-index: 60 !important;
@@ -248,7 +251,7 @@ body {
    * Clickable cards firm up their border under the pointer.
    */
   .pb-card {
-    @apply rounded-lg border border-outline-gray-2 bg-surface-white;
+    @apply rounded-6 border border-outline-gray-2 bg-surface-base;
     transition: border-color 150ms ease;
   }
   .pb-card:hover {
@@ -256,24 +259,24 @@ body {
   }
   .pb-card-selected,
   .pb-card-selected:hover {
-    @apply border-outline-gray-5 ring-1 ring-outline-gray-5;
+    @apply border-outline-gray-7 ring-1 ring-outline-gray-7;
   }
 
   /* the same surface for cards that are not clickable */
   .pb-panel {
-    @apply rounded-lg border border-outline-gray-2 bg-surface-white;
+    @apply rounded-6 border border-outline-gray-2 bg-surface-base;
   }
 
   /* Quiet, borderless input that only shows structure on focus. */
   .pb-input {
-    @apply rounded-md border border-transparent bg-surface-gray-2 text-ink-gray-8 transition-colors;
+    @apply rounded-5 border border-transparent bg-surface-gray-2 text-ink-gray-8 transition-colors;
     @apply placeholder:text-ink-gray-4 hover:bg-surface-gray-3;
-    @apply focus:border-outline-gray-3 focus:bg-surface-white focus:outline-none focus:ring-0;
+    @apply focus:border-outline-gray-3 focus:bg-surface-base focus:outline-none focus:ring-0;
   }
 
   /* square, quiet toolbar button: the task panel's header icons */
   .pb-icon-btn {
-    @apply grid size-8 place-items-center rounded-lg text-ink-gray-6 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-9;
+    @apply grid size-8 place-items-center rounded-6 text-ink-gray-6 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-9;
   }
 
   .pb-field-label {
@@ -286,7 +289,7 @@ body {
 
   .prose-f {
     @apply prose prose-sm max-w-none
-      prose-img:rounded-lg prose-img:border
+      prose-img:rounded-6 prose-img:border
       prose-td:border prose-td:border-outline-gray-2 prose-td:p-2
       prose-th:border prose-th:border-outline-gray-2 prose-th:bg-surface-gray-2 prose-th:p-2;
   }

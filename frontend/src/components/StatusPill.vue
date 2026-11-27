@@ -1,7 +1,7 @@
 <template>
-  <Dropdown v-if="editable" :options="statusOptions" placement="bottom-start">
+  <Dropdown v-if="editable" :options="statusOptions">
     <button
-      class="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs text-ink-gray-7 transition-colors hover:bg-surface-gray-2"
+      class="inline-flex items-center gap-1.5 rounded-4 px-2 py-1 text-xs text-ink-gray-7 transition-colors hover:bg-surface-gray-2"
     >
       <span class="size-1.5 shrink-0 rounded-full" :class="style.dot" />
       {{ style.label || status }}

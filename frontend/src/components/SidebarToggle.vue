@@ -1,6 +1,6 @@
 <template>
   <button
-    class="tap-target -ml-1 grid shrink-0 place-items-center rounded p-1.5 text-ink-gray-7 hover:bg-surface-gray-2 lg:hidden"
+    class="tap-target -ml-1 grid shrink-0 place-items-center rounded-4 p-1.5 text-ink-gray-7 hover:bg-surface-gray-2 lg:hidden"
     aria-label="Open navigation"
     @click="openSidebar"
   >

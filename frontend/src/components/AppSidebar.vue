@@ -14,7 +14,7 @@
   </Transition>
 
   <aside
-    class="flex h-full shrink-0 flex-col border-r border-outline-gray-2 bg-surface-menu-bar pb-safe-bottom pl-safe-left pt-safe-top transition-transform duration-200 lg:translate-x-0 lg:transition-all"
+    class="flex h-full shrink-0 flex-col border-r border-outline-gray-2 bg-surface-sidebar pb-safe-bottom pl-safe-left pt-safe-top transition-transform duration-200 lg:translate-x-0 lg:transition-all"
     :class="[
       // phone/tablet: an overlay drawer that slides in from the left
       'fixed inset-y-0 left-0 z-50 w-64 lg:static lg:z-auto lg:shadow-none',
@@ -26,11 +26,11 @@
          holds the other apps, the theme and logging out, as in Frappe CRM -->
     <div class="flex items-center gap-1 p-2">
       <div class="min-w-0 flex-1">
-        <Dropdown :options="brandMenu" placement="left">
+        <Dropdown :options="brandMenu">
           <template #default="{ open }">
             <button
-              class="flex w-full min-w-0 items-center gap-2 rounded-lg p-1.5 text-left transition-colors hover:bg-surface-gray-2"
-              :class="[open && '!bg-surface-white shadow-sm', iconsOnly && 'justify-center']"
+              class="flex w-full min-w-0 items-center gap-2 rounded-6 p-1.5 text-left transition-colors hover:bg-surface-gray-2"
+              :class="[open && '!bg-surface-base shadow-sm', iconsOnly && 'justify-center']"
               :title="iconsOnly ? brand.name : undefined"
             >
               <img
@@ -42,12 +42,12 @@
               />
               <span
                 v-else
-                class="grid size-8 shrink-0 place-items-center rounded-full bg-surface-gray-7 text-sm font-semibold text-ink-white"
+                class="grid size-8 shrink-0 place-items-center rounded-full bg-surface-gray-10 text-sm-semibold text-ink-base"
               >
                 {{ initials(brand.name) }}
               </span>
               <span v-if="!iconsOnly" class="min-w-0 flex-1">
-                <span class="block truncate text-base font-medium leading-none text-ink-gray-9">{{ brand.name }}</span>
+                <span class="block truncate text-base-medium leading-none text-ink-gray-9">{{ brand.name }}</span>
                 <span class="mt-1 block truncate text-sm leading-none text-ink-gray-7">{{ user.full_name }}</span>
               </span>
               <LucideChevronDown v-if="!iconsOnly" class="size-4 shrink-0 text-ink-gray-5" />
@@ -57,7 +57,7 @@
       </div>
 
       <button
-        class="tap-target grid shrink-0 place-items-center rounded p-1 text-ink-gray-5 hover:bg-surface-gray-2 lg:hidden"
+        class="tap-target grid shrink-0 place-items-center rounded-4 p-1 text-ink-gray-5 hover:bg-surface-gray-2 lg:hidden"
         aria-label="Close navigation"
         @click="closeSidebar"
       >
@@ -76,15 +76,9 @@
         <LucideSearch class="size-4" />
       </SidebarLink>
 
-      <NotificationsBell placement="right-start" class="w-full">
-        <template #target="{ togglePopover, isOpen, unread }">
-          <SidebarLink
-            label="Notifications"
-            :badge="unread"
-            :active="isOpen"
-            :collapsed="iconsOnly"
-            @click="togglePopover()"
-          >
+      <NotificationsBell side="right" align="start">
+        <template #target="{ open, unread }">
+          <SidebarLink label="Notifications" :badge="unread" :active="open" :collapsed="iconsOnly">
             <LucideBell class="size-4" />
           </SidebarLink>
         </template>
@@ -117,7 +111,7 @@
         </button>
         <button
           v-if="permissions.canCreateProject"
-          class="grid place-items-center rounded p-0.5 text-ink-gray-5 opacity-100 hover:bg-surface-gray-3 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100"
+          class="grid place-items-center rounded-4 p-0.5 text-ink-gray-5 opacity-100 hover:bg-surface-gray-3 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100"
           title="New project"
           aria-label="New project"
           @click="showNewProject = true"
@@ -134,10 +128,10 @@
           v-for="project in recentProjects"
           :key="project.name"
           :to="{ name: 'Board', params: { project: project.name } }"
-          class="flex h-7.5 shrink-0 items-center gap-2 rounded px-2 text-sm text-ink-gray-8 transition-colors hover:bg-surface-gray-2"
+          class="flex h-7.5 shrink-0 items-center gap-2 rounded-4 px-2 text-sm text-ink-gray-8 transition-colors hover:bg-surface-gray-2"
           :class="
             route.params.project === project.name &&
-            '!bg-surface-selected shadow-sm'
+            '!bg-surface-elevation-3 shadow-sm'
           "
         >
           <span class="grid size-4 shrink-0 place-items-center">
@@ -160,7 +154,7 @@
         <router-link
           v-if="moreProjects > 0"
           :to="{ name: 'Projects' }"
-          class="flex h-7.5 shrink-0 items-center gap-2 rounded px-2 text-sm text-ink-gray-5 hover:bg-surface-gray-2 hover:text-ink-gray-8"
+          class="flex h-7.5 shrink-0 items-center gap-2 rounded-4 px-2 text-sm text-ink-gray-5 hover:bg-surface-gray-2 hover:text-ink-gray-8"
         >
           <span class="size-4 shrink-0" />
           All projects
@@ -200,7 +194,7 @@
 <script setup>
 import { computed, h, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Dropdown, useTheme } from 'frappe-ui'
+import { Dropdown, useColorScheme } from 'frappe-ui'
 import SidebarLink from './SidebarLink.vue'
 import CreateProjectDialog from './CreateProjectDialog.vue'
 import NotificationsBell from './NotificationsBell.vue'
@@ -294,12 +288,12 @@ const recentProjects = computed(() => {
 })
 const moreProjects = computed(() => openProjects.value.length - recentProjects.value.length)
 
-const { currentTheme, setTheme } = useTheme()
+const { colorScheme: currentTheme, setColorScheme: setTheme } = useColorScheme()
 
 /** A dropdown icon from an image URL: the apps menu shows each app's logo. */
 function logoIcon(src) {
   return (_, { attrs }) =>
-    h('img', { ...attrs, src, alt: '', class: [attrs.class, 'rounded object-contain'] })
+    h('img', { ...attrs, src, alt: '', class: [attrs.class, 'rounded-4 object-contain'] })
 }
 
 // Frappe's own list of the site's apps - the desk's apps screen reads the same.
@@ -334,7 +328,7 @@ const brandMenu = computed(() => [
   {
     group: 'App',
     hideLabel: true,
-    items: [
+    options: [
       { label: 'Apps', icon: LucideLayoutGrid, submenu: appsMenu.value },
       {
         label: 'Theme',
@@ -351,7 +345,7 @@ const brandMenu = computed(() => [
   {
     group: 'Account',
     hideLabel: true,
-    items: [{ label: 'Log out', icon: LucideLogOut, onClick: logout }],
+    options: [{ label: 'Log out', icon: LucideLogOut, onClick: logout }],
   },
 ])
 

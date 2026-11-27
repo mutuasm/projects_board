@@ -18,45 +18,30 @@
       </button>
     </Badge>
 
-    <Autocomplete
+    <Combobox
       v-if="!readonly"
       :options="options"
       :model-value="null"
       placeholder="Add label"
       @update:model-value="onPick"
-      @update:query="(q) => (query = q)"
     >
-      <template #target="{ togglePopover }">
+      <template #trigger>
         <button
-          class="flex items-center gap-1 rounded border border-dashed border-outline-gray-3 px-1.5 py-0.5 text-xs text-ink-gray-6 hover:border-outline-gray-4 hover:text-ink-gray-8"
-          @click="togglePopover()"
+          type="button"
+          class="flex items-center gap-1 rounded-4 border border-dashed border-outline-gray-3 px-1.5 py-0.5 text-xs text-ink-gray-6 hover:border-outline-gray-4 hover:text-ink-gray-8"
         >
           <LucideTag class="size-3" />
           Label
         </button>
       </template>
-      <template #footer="{ togglePopover }">
-        <!-- Frappe creates the Tag master on first use, so free text is fine. -->
-        <Button
-          v-if="canCreate"
-          class="w-full"
-          @click="
-            () => {
-              add(query)
-              togglePopover()
-            }
-          "
-        >
-          Create "{{ query }}"
-        </Button>
-      </template>
-    </Autocomplete>
+      <template #item-create="{ query }">Create "{{ query.trim() }}"</template>
+    </Combobox>
   </div>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { Autocomplete, Badge, Button } from 'frappe-ui'
+import { Badge, Combobox } from 'frappe-ui'
 import api from '@/data/api'
 
 const props = defineProps({
@@ -65,29 +50,37 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:modelValue'])
 
-const query = ref('')
 const allTags = ref([])
 
-const options = computed(() =>
-  allTags.value
+const options = computed(() => [
+  ...allTags.value
     .filter((tag) => !props.modelValue.includes(tag))
     .map((tag) => ({ label: tag, value: tag })),
-)
+  // Frappe creates the Tag master on first use, so free text is fine.
+  {
+    type: 'custom',
+    key: 'create',
+    label: 'Create',
+    slot: 'create',
+    icon: 'lucide-plus',
+    condition: ({ query }) => canCreate(query),
+    onClick: ({ query }) => add(query),
+  },
+])
 
-const canCreate = computed(() => {
-  const value = query.value.trim()
+function canCreate(text) {
+  const value = (text || '').trim()
   return (
     value &&
     !allTags.value.some((t) => t.toLowerCase() === value.toLowerCase()) &&
     !props.modelValue.includes(value)
   )
-})
+}
 
 function add(tag) {
   const value = (tag || '').trim()
   if (!value || props.modelValue.includes(value)) return
   emit('update:modelValue', [...props.modelValue, value])
-  query.value = ''
 }
 
 function remove(tag) {

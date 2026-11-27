@@ -1,6 +1,6 @@
 <template>
-  <Dialog v-model="show" :options="{ title: 'Rename project', size: 'sm' }">
-    <template #body-content>
+  <Dialog v-model="show" title="Rename project" size="sm">
+    <template #default>
       <form class="flex flex-col gap-3" @submit.prevent="submit">
         <FormControl
           ref="input"

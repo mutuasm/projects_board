@@ -3,7 +3,7 @@
     <div
       v-for="dep in dependencies"
       :key="dep.name"
-      class="group flex items-center gap-2 rounded px-1.5 py-1 hover:bg-surface-gray-1"
+      class="group flex items-center gap-2 rounded-4 px-1.5 py-1 hover:bg-surface-gray-1"
     >
       <span class="size-1.5 shrink-0 rounded-full" :class="statusStyle(dep.status).dot" />
       <button
@@ -14,7 +14,7 @@
       </button>
       <Badge
         v-if="!['Completed', 'Cancelled'].includes(dep.status)"
-        theme="orange"
+        theme="amber"
         variant="subtle"
         size="sm"
       >
@@ -22,7 +22,7 @@
       </Badge>
       <button
         v-if="!readonly"
-        class="text-ink-gray-4 opacity-0 transition-opacity hover:text-ink-red-3 group-hover:opacity-100"
+        class="text-ink-gray-4 opacity-0 transition-opacity hover:text-ink-red-5 group-hover:opacity-100"
         :aria-label="`Remove dependency ${dep.subject}`"
         @click="remove(dep.name)"
       >
@@ -30,31 +30,34 @@
       </button>
     </div>
 
-    <Autocomplete
+    <!-- the server already matched the text, so the list doesn't filter again -->
+    <Combobox
       v-if="!readonly"
+      v-model:query="query"
       :options="options"
       :model-value="null"
       :loading="searching"
+      :filterable="false"
       placeholder="Search tasks"
       @update:model-value="onPick"
-      @update:query="onQuery"
+      @update:open="onOpen"
     >
-      <template #target="{ togglePopover }">
+      <template #trigger>
         <button
-          class="flex w-fit items-center gap-1 rounded border border-dashed border-outline-gray-3 px-1.5 py-1 text-xs text-ink-gray-6 hover:border-outline-gray-4 hover:text-ink-gray-8"
-          @click="togglePopover()"
+          type="button"
+          class="flex w-fit items-center gap-1 rounded-4 border border-dashed border-outline-gray-3 px-1.5 py-1 text-xs text-ink-gray-6 hover:border-outline-gray-4 hover:text-ink-gray-8"
         >
           <LucidePlus class="size-3" />
           Add blocker
         </button>
       </template>
-    </Autocomplete>
+    </Combobox>
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { Autocomplete, Badge } from 'frappe-ui'
+import { computed, ref, watch } from 'vue'
+import { Badge, Combobox } from 'frappe-ui'
 import api from '@/data/api'
 import { statusStyle } from '@/utils/constants'
 
@@ -67,6 +70,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['change', 'open'])
 
+const query = ref('')
 const results = ref([])
 const searching = ref(false)
 let searchToken = 0
@@ -90,6 +94,15 @@ async function onQuery(txt) {
   } finally {
     if (token === searchToken) searching.value = false
   }
+}
+
+watch(query, (txt) => onQuery(txt))
+
+/** A listened-to query is ours to reset; start each search fresh. */
+function onOpen(open) {
+  if (!open) return
+  if (query.value) query.value = ''
+  else onQuery('')
 }
 
 function onPick(option) {

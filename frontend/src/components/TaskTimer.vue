@@ -18,7 +18,7 @@
 
     <template v-else>
       <span
-        class="rounded bg-surface-red-2 px-1.5 py-1 font-mono text-xs tabular-nums text-ink-red-3"
+        class="rounded-4 bg-surface-red-2 px-1.5 py-1 font-mono text-xs tabular-nums text-ink-red-5"
       >
         {{ elapsedLabel }}
       </span>

@@ -1,13 +1,13 @@
 <template>
-  <Dropdown :options="options" placement="bottom-start">
+  <Dropdown :options="options">
     <Button variant="ghost" size="sm">
       <template #prefix><LucideBookmark class="size-3.5" /></template>
       {{ activeLabel }}
     </Button>
   </Dropdown>
 
-  <Dialog v-model="showSave" :options="{ title: 'Save this view', size: 'sm' }">
-    <template #body-content>
+  <Dialog v-model="showSave" title="Save this view" size="sm">
+    <template #default>
       <FormControl
         v-model="label"
         label="View name"
@@ -59,7 +59,7 @@ const options = computed(() => {
   const actions = [
     {
       label: 'Save current view…',
-      icon: 'bookmark',
+      icon: 'lucide-bookmark',
       onClick: () => {
         label.value = ''
         errorMessage.value = ''
@@ -71,14 +71,14 @@ const options = computed(() => {
   if (activeView.value) {
     actions.push({
       label: `Delete “${activeView.value}”`,
-      icon: 'trash-2',
+      icon: 'lucide-trash-2',
       onClick: remove,
     })
   }
   if (hasActiveFilters.value || activeView.value) {
     actions.push({
       label: 'Clear filters',
-      icon: 'x',
+      icon: 'lucide-x',
       onClick: () => {
         resetFilters()
         activeView.value = null

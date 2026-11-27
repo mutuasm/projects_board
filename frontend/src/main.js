@@ -6,7 +6,6 @@ import {
   Badge,
   Dialog,
   ErrorMessage,
-  FeatherIcon,
   FormControl,
   FrappeUI,
   TextInput,
@@ -22,9 +21,8 @@ import { session } from './data/session'
 const app = createApp(App)
 
 setConfig('resourceFetcher', frappeRequest)
-// frappe-ui would open its own socket on a hard-coded port; data/realtime.js
-// opens one on the port the site actually uses.
-app.use(FrappeUI, { socketio: false })
+// frappe-ui 1.x opens no socket of its own; data/realtime.js runs the app's one.
+app.use(FrappeUI)
 app.use(router)
 
 const globalComponents = {
@@ -32,7 +30,6 @@ const globalComponents = {
   Badge,
   Dialog,
   ErrorMessage,
-  FeatherIcon,
   FormControl,
   TextInput,
   Tooltip,

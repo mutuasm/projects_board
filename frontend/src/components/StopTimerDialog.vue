@@ -1,9 +1,9 @@
 <template>
-  <Dialog v-model="show" :options="{ title: 'Log tracked time', size: 'md' }">
-    <template #body-content>
+  <Dialog v-model="show" title="Log tracked time" size="md">
+    <template #default>
       <div class="flex flex-col gap-3">
-        <div class="rounded-lg bg-surface-gray-1 p-3">
-          <p class="font-mono text-2xl tabular-nums text-ink-gray-9">
+        <div class="rounded-6 bg-surface-gray-1 p-3">
+          <p class="font-mono text-3xl tabular-nums text-ink-gray-9">
             {{ elapsedLabel }}
           </p>
           <p class="mt-0.5 text-xs text-ink-gray-5">

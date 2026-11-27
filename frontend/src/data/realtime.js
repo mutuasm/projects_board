@@ -1,5 +1,18 @@
 import { ref } from 'vue'
-import { initSocket } from 'frappe-ui'
+import { io } from 'socket.io-client'
+
+/**
+ * frappe-ui 1.x no longer opens sockets, so this is its old initSocket: the
+ * site's socket.io namespace, on the realtime port when the page is served on
+ * a dev port, and over the site's own host (https) in production.
+ */
+function initSocket({ port } = {}) {
+  const host = window.location.hostname
+  const siteName = import.meta.env.DEV ? host : window.site_name
+  const portPart = window.location.port ? `:${port || 9000}` : ''
+  const protocol = portPart ? 'http' : 'https'
+  return io(`${protocol}://${host}${portPart}/${siteName}`, { withCredentials: true })
+}
 
 /**
  * One socket for the whole app, on Frappe's realtime server.

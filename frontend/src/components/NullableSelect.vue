@@ -1,13 +1,14 @@
 <template>
-  <div :class="label ? 'space-y-1.5' : ''">
-    <label v-if="label" class="block text-xs text-ink-gray-5">{{ label }}</label>
-    <Select
-      v-bind="$attrs"
-      :model-value="internalValue"
-      :options="internalOptions"
-      @update:model-value="onUpdate"
-    />
-  </div>
+  <!-- Select draws its own label in v1 (matching FormControl), and hugs its
+       content unless told to fill the row -->
+  <Select
+    v-bind="$attrs"
+    class="w-full"
+    :label="label || undefined"
+    :model-value="internalValue"
+    :options="internalOptions"
+    @update:model-value="onUpdate"
+  />
 </template>
 
 <script setup>

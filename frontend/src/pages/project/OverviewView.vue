@@ -13,7 +13,7 @@
         <StatTile
           label="Overdue"
           :value="stats.overdue"
-          :value-class="stats.overdue ? 'text-ink-red-3' : 'text-ink-gray-9'"
+          :value-class="stats.overdue ? 'text-ink-red-5' : 'text-ink-gray-9'"
           sub="past expected end"
         >
           <template #icon><LucideClockAlert class="size-3.5 text-ink-gray-5" /></template>
@@ -24,7 +24,7 @@
         <StatTile
           label="Blocked"
           :value="stats.blocked"
-          :value-class="stats.blocked ? 'text-ink-amber-3' : 'text-ink-gray-9'"
+          :value-class="stats.blocked ? 'text-ink-amber-5' : 'text-ink-gray-9'"
           sub="waiting on another task"
         >
           <template #icon><LucideLock class="size-3.5 text-ink-gray-5" /></template>
@@ -41,18 +41,18 @@
       <!-- completion meter: one ratio against a limit -->
       <section class="pb-panel p-4">
         <div class="flex items-baseline justify-between">
-          <h2 class="text-sm font-semibold text-ink-gray-8">Completion</h2>
+          <h2 class="text-sm-semibold text-ink-gray-8">Completion</h2>
           <span class="text-xs text-ink-gray-5">
             % Complete Method: {{ doc?.percent_complete_method || '—' }}
           </span>
         </div>
         <div class="mt-3 flex items-center gap-3">
-          <p class="text-3xl font-semibold tabular-nums text-ink-gray-9">
+          <p class="text-4xl-semibold tabular-nums text-ink-gray-9">
             {{ Math.round(stats.percent_complete) }}%
           </p>
           <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-surface-gray-2">
             <div
-              class="h-full rounded-full bg-surface-green-3 transition-all"
+              class="h-full rounded-full bg-surface-green-7 transition-all"
               :style="{ width: `${stats.percent_complete}%` }"
             />
           </div>
@@ -65,7 +65,7 @@
         class="pb-panel p-4"
       >
         <div class="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 class="text-sm font-semibold text-ink-gray-8">Costing &amp; billing</h2>
+          <h2 class="text-sm-semibold text-ink-gray-8">Costing &amp; billing</h2>
           <span class="text-xs text-ink-gray-5">
             Rolled up from Timesheets, Sales Orders and Purchase Invoices
           </span>
@@ -74,7 +74,7 @@
         <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
           <div v-for="item in financials" :key="item.label">
             <dt class="text-xs text-ink-gray-5">{{ item.label }}</dt>
-            <dd class="text-sm font-medium tabular-nums" :class="item.className || 'text-ink-gray-9'">
+            <dd class="text-sm-medium tabular-nums" :class="item.className || 'text-ink-gray-9'">
               {{ item.value }}
             </dd>
           </div>
@@ -88,7 +88,7 @@
           </div>
           <div class="h-2 w-full overflow-hidden rounded-full bg-surface-gray-2">
             <div
-              class="h-full rounded-full bg-surface-green-3"
+              class="h-full rounded-full bg-surface-green-7"
               :style="{ width: `${billedPercent}%` }"
             />
           </div>
@@ -98,7 +98,7 @@
       <div class="grid gap-5 lg:grid-cols-2">
         <!-- tasks by status -->
         <section class="pb-panel p-4">
-          <h2 class="text-sm font-semibold text-ink-gray-8">Tasks by status</h2>
+          <h2 class="text-sm-semibold text-ink-gray-8">Tasks by status</h2>
           <div class="mt-3 flex flex-col gap-2">
             <BarRow
               v-for="row in statusRows"
@@ -114,7 +114,7 @@
 
         <!-- tasks by priority -->
         <section class="pb-panel p-4">
-          <h2 class="text-sm font-semibold text-ink-gray-8">Tasks by priority</h2>
+          <h2 class="text-sm-semibold text-ink-gray-8">Tasks by priority</h2>
           <div class="mt-3 flex flex-col gap-2">
             <BarRow
               v-for="row in priorityRows"
@@ -130,7 +130,7 @@
 
       <!-- workload: a table, because each row is a person plus two numbers -->
       <section class="pb-panel p-4">
-        <h2 class="text-sm font-semibold text-ink-gray-8">Workload</h2>
+        <h2 class="text-sm-semibold text-ink-gray-8">Workload</h2>
         <table class="mt-3 w-full text-sm">
           <thead>
             <tr class="text-xs uppercase tracking-wide text-ink-gray-5">
@@ -159,7 +159,7 @@
               <td class="hidden py-1.5 pr-4 sm:table-cell">
                 <div class="h-2 w-full overflow-hidden rounded-full bg-surface-gray-2">
                   <div
-                    class="h-full rounded-full bg-surface-blue-3"
+                    class="h-full rounded-full bg-surface-blue-6"
                     :style="{ width: `${maxOpen ? (row.open / maxOpen) * 100 : 0}%` }"
                   />
                 </div>
@@ -178,7 +178,7 @@
       <div class="grid gap-5 lg:grid-cols-2">
         <!-- native project fields, read-only summary -->
         <section class="pb-panel p-4">
-          <h2 class="text-sm font-semibold text-ink-gray-8">Details</h2>
+          <h2 class="text-sm-semibold text-ink-gray-8">Details</h2>
           <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm sm:grid-cols-2">
             <div v-for="item in details" :key="item.label">
               <dt class="text-xs text-ink-gray-5">{{ item.label }}</dt>
@@ -188,10 +188,10 @@
         </section>
 
         <section v-if="inReview.length" class="pb-panel p-4">
-          <h2 class="flex items-center gap-2 text-sm font-semibold text-ink-gray-8">
-            <LucideClipboardCheck class="size-4 text-ink-amber-3" />
+          <h2 class="flex items-center gap-2 text-sm-semibold text-ink-gray-8">
+            <LucideClipboardCheck class="size-4 text-ink-amber-5" />
             In review
-            <span class="text-xs font-normal tabular-nums text-ink-gray-5">{{ inReview.length }}</span>
+            <span class="text-xs tabular-nums text-ink-gray-5">{{ inReview.length }}</span>
           </h2>
           <ul class="mt-3 flex flex-col divide-y divide-outline-gray-1">
             <li
@@ -206,9 +206,9 @@
                 class="w-24 shrink-0 text-right text-xs"
                 :class="
                   !task.review_date
-                    ? 'text-ink-amber-3'
+                    ? 'text-ink-amber-5'
                     : isPast(task.review_date)
-                      ? 'font-medium text-ink-red-3'
+                      ? 'font-medium text-ink-red-5'
                       : 'text-ink-gray-5'
                 "
               >
@@ -219,7 +219,7 @@
         </section>
 
         <section class="pb-panel p-4">
-          <h2 class="text-sm font-semibold text-ink-gray-8">Recent activity</h2>
+          <h2 class="text-sm-semibold text-ink-gray-8">Recent activity</h2>
           <ul class="mt-3 flex flex-col gap-3">
             <li
               v-for="item in activity"
@@ -346,7 +346,7 @@ const financials = computed(() => {
     {
       label: `Gross margin (${Math.round(s.per_gross_margin || 0)}%)`,
       value: money(s.gross_margin),
-      className: Number(s.gross_margin) < 0 ? 'text-ink-red-3' : 'text-ink-green-3',
+      className: Number(s.gross_margin) < 0 ? 'text-ink-red-5' : 'text-ink-green-5',
     },
   ]
 })

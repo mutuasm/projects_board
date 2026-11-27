@@ -2,13 +2,13 @@
   <section class="pb-panel p-4">
     <div class="flex flex-wrap items-start gap-3">
       <span
-        class="grid size-9 shrink-0 place-items-center rounded-lg"
-        :class="enabled ? 'bg-surface-green-2 text-ink-green-3' : 'bg-surface-gray-2 text-ink-gray-5'"
+        class="grid size-9 shrink-0 place-items-center rounded-6"
+        :class="enabled ? 'bg-surface-green-2 text-ink-green-5' : 'bg-surface-gray-2 text-ink-gray-5'"
       >
         <LucideMailCheck class="size-[18px]" />
       </span>
       <div class="min-w-0 flex-1">
-        <h2 class="flex items-center gap-2 text-sm font-semibold text-ink-gray-9">
+        <h2 class="flex items-center gap-2 text-sm-semibold text-ink-gray-9">
           Automatic check-ins
           <Badge :theme="enabled ? 'green' : 'gray'" variant="subtle" size="sm">
             {{ enabled ? 'On' : 'Off' }}
@@ -28,7 +28,7 @@
           <component
             :is="check.ok ? LucideCircleCheck : check.blocking ? LucideCircleX : LucideCircleAlert"
             class="mt-0.5 size-4 shrink-0"
-            :class="check.ok ? 'text-ink-green-3' : check.blocking ? 'text-ink-red-3' : 'text-ink-amber-3'"
+            :class="check.ok ? 'text-ink-green-5' : check.blocking ? 'text-ink-red-5' : 'text-ink-amber-5'"
           />
           <div class="min-w-0">
             <p class="text-ink-gray-8">{{ check.label }}</p>

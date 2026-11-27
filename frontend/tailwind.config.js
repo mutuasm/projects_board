@@ -1,15 +1,13 @@
-import frappeUIPreset from 'frappe-ui/tailwind'
+import frappeUIPreset, { content as frappeUIContent } from 'frappe-ui/tailwind'
 
 export default {
   presets: [frappeUIPreset],
   content: [
     './index.html',
     './src/**/*.{vue,js,ts,jsx,tsx}',
-    './node_modules/frappe-ui/src/**/*.{vue,js,ts,jsx,tsx}',
-    '../node_modules/frappe-ui/src/**/*.{vue,js,ts,jsx,tsx}',
-    './node_modules/frappe-ui/frappe/**/*.{vue,js,ts,jsx,tsx}',
+    // frappe-ui's own source globs (src, molecules, experimental ListView)
+    ...frappeUIContent,
   ],
-  safelist: [{ pattern: /!(text|bg)-/, variants: ['hover', 'active'] }],
   theme: {
     extend: {
       // iOS notch / home indicator, so the drawer and the FAB clear them.

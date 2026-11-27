@@ -1,9 +1,6 @@
 <template>
-  <Dialog
-    v-model="show"
-    :options="{ title: dialogTitle, size: 'xl' }"
-  >
-    <template #body-content>
+  <Dialog v-model="show" :title="dialogTitle" size="xl">
+    <template #default>
       <div class="thin-scrollbar flex max-h-[70vh] flex-col gap-3 overflow-y-auto sm:max-h-none sm:overflow-visible">
         <FormControl
           ref="subjectInput"
@@ -37,11 +34,10 @@
 
         <div>
           <label class="mb-1.5 block text-xs text-ink-gray-5">Description</label>
-          <TextEditor
-            editor-class="prose-f max-h-40 min-h-20 overflow-y-auto rounded border border-outline-gray-2 px-2 py-1.5 focus:outline-none sm:max-h-56 sm:min-h-24"
-            :content="form.description"
+          <RichEditor
+            v-model="form.description"
+            editor-class="prose-f max-h-40 min-h-20 overflow-y-auto rounded-4 border border-outline-gray-2 px-2 py-1.5 focus:outline-none sm:max-h-56 sm:min-h-24"
             placeholder="Add more detail…"
-            @change="(value) => (form.description = value)"
           />
         </div>
 
@@ -65,16 +61,8 @@
             label="Weight (points)"
             placeholder="0"
           />
-          <FormControl
-            v-model="form.exp_start_date"
-            type="date"
-            label="Start date"
-          />
-          <FormControl
-            v-model="form.exp_end_date"
-            type="date"
-            label="Due date"
-          />
+          <DateField v-model="form.exp_start_date" label="Start date" />
+          <DateField v-model="form.exp_end_date" label="Due date" />
         </div>
 
         <!-- a Frappe Auto Repeat series, with this task as its first occurrence -->
@@ -86,7 +74,7 @@
         <!-- not silently missing: say why, and let an admin fix it here -->
         <div
           v-else
-          class="flex flex-wrap items-center gap-2 rounded-lg bg-surface-gray-1 px-3 py-2 text-xs text-ink-gray-6"
+          class="flex flex-wrap items-center gap-2 rounded-6 bg-surface-gray-1 px-3 py-2 text-xs text-ink-gray-6"
         >
           <LucideRepeat class="size-3.5 shrink-0" />
           <span class="min-w-0 flex-1">
@@ -116,7 +104,7 @@
             <input
               v-model="form.color"
               type="color"
-              class="h-7 w-10 cursor-pointer rounded border border-outline-gray-2 bg-transparent p-0.5"
+              class="h-7 w-10 cursor-pointer rounded-4 border border-outline-gray-2 bg-transparent p-0.5"
             />
           </label>
         </div>
@@ -138,10 +126,12 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
-import { Button, Dialog, ErrorMessage, FormControl, TextEditor } from 'frappe-ui'
+import { Button, Dialog, ErrorMessage, FormControl } from 'frappe-ui'
 import AssigneeSelect from './AssigneeSelect.vue'
 import NullableSelect from './NullableSelect.vue'
 import RepeatEditor from './RepeatEditor.vue'
+import DateField from './DateField.vue'
+import RichEditor from './RichEditor.vue'
 import api from '@/data/api'
 import { projects } from '@/data/projects'
 import {
@@ -290,7 +280,7 @@ watch(show, async (open) => {
   // Assigning to yourself is the common case; still one click to remove.
   form.value.assignees = user.value?.name ? [user.value.name] : []
   await nextTick()
-  subjectInput.value?.$el?.querySelector('input')?.focus()
+  subjectInput.value?.focus()
 })
 
 async function submit() {

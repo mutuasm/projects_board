@@ -1,16 +1,13 @@
 <template>
-  <Autocomplete
-    :multiple="true"
-    :options="userOptions"
+  <MultiSelect
     :model-value="modelValue"
+    :options="userOptions"
     placeholder="Assign to…"
     @update:model-value="onUpdate"
   >
-    <template #target="{ togglePopover }">
-      <button
-        class="flex items-center gap-2 rounded px-1.5 py-1 hover:bg-surface-gray-2"
-        @click="togglePopover()"
-      >
+    <!-- the trigger toggles the list itself; rows bring their own checkboxes -->
+    <template #trigger>
+      <button type="button" class="flex items-center gap-2 rounded-4 px-1.5 py-1 hover:bg-surface-gray-2">
         <AvatarStack v-if="selectedUsers.length" :users="selectedUsers" :max="4" />
         <span v-else class="flex items-center gap-1.5 text-sm text-ink-gray-5">
           <LucideUserPlus class="size-4" />
@@ -18,21 +15,15 @@
         </span>
       </button>
     </template>
-    <template #item-prefix="{ option }">
-      <div class="flex items-center gap-1.5">
-        <LucideCheck
-          class="size-3.5 shrink-0"
-          :class="isSelected(option) ? 'text-ink-gray-8' : 'invisible'"
-        />
-        <Avatar size="sm" :label="option.label" :image="option.user_image" />
-      </div>
+    <template #item-prefix="{ item }">
+      <Avatar size="sm" :label="item.label" :image="item.user_image" />
     </template>
-  </Autocomplete>
+  </MultiSelect>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { Autocomplete, Avatar } from 'frappe-ui'
+import { Avatar, MultiSelect } from 'frappe-ui'
 import AvatarStack from './AvatarStack.vue'
 import { useUsers } from '@/data/users'
 
@@ -58,10 +49,6 @@ const selectedUsers = computed(() =>
       users.value.find((u) => u.name === email) || { name: email, full_name: email },
   ),
 )
-
-function isSelected(option) {
-  return (props.modelValue || []).includes(option.value)
-}
 
 function onUpdate(value) {
   emit(

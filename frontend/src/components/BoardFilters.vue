@@ -2,47 +2,33 @@
   <div class="border-b border-outline-gray-2 px-4 py-2 sm:px-5">
     <!-- phones: one compact row, everything else behind the Filters sheet -->
     <div class="flex items-center gap-2 sm:hidden">
-      <div class="relative min-w-0 flex-1">
-        <LucideSearch
-          class="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-ink-gray-4"
-        />
-        <input
-          ref="mobileSearch"
-          v-model="filters.search"
-          type="text"
-          placeholder="Search tasks"
-          class="pb-input h-9 w-full pl-7 pr-2"
-        />
-      </div>
-      <button
-        class="tap-target flex shrink-0 items-center gap-1.5 rounded border px-2.5 py-1.5 text-sm transition-colors"
-        aria-label="Filters"
-        :class="
-          activeFilterCount
-            ? 'border-outline-gray-4 bg-surface-gray-2 text-ink-gray-9'
-            : 'border-outline-gray-2 text-ink-gray-7'
-        "
-        @click="showSheet = true"
+      <TextInput
+        ref="mobileSearch"
+        v-model="filters.search"
+        type="search"
+        size="md"
+        placeholder="Search tasks"
+        class="min-w-0 flex-1"
       >
-        <LucideSlidersHorizontal class="size-4" />
+        <template #prefix><LucideSearch class="size-4 text-ink-gray-5" /></template>
+      </TextInput>
+      <Button size="md" label="Filters" @click="showSheet = true">
+        <template #prefix><LucideSlidersHorizontal class="size-4" /></template>
         <span v-if="activeFilterCount" class="tabular-nums">{{ activeFilterCount }}</span>
-      </button>
+      </Button>
     </div>
 
-    <!-- tablet and up: the controls stay inline -->
+    <!-- tablet and up: search, people, then one consistent row of filter buttons -->
     <div class="hidden flex-wrap items-center gap-2 sm:flex">
-      <div class="relative">
-        <LucideSearch
-          class="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-ink-gray-4"
-        />
-        <input
-          ref="desktopSearch"
-          v-model="filters.search"
-          type="text"
-          placeholder="Search tasks"
-          class="pb-input h-7 w-48 pl-7 pr-2 text-sm"
-        />
-      </div>
+      <TextInput
+        ref="desktopSearch"
+        v-model="filters.search"
+        type="search"
+        placeholder="Search tasks"
+        class="w-52"
+      >
+        <template #prefix><LucideSearch class="size-3.5 text-ink-gray-5" /></template>
+      </TextInput>
 
       <!-- assignee quick filter, Jira style avatar row -->
       <div class="no-scrollbar flex max-w-full items-center gap-1 overflow-x-auto">
@@ -52,58 +38,61 @@
           class="shrink-0 rounded-full transition-all"
           :class="
             filters.assignee === member.name
-              ? 'opacity-100 ring-1 ring-outline-gray-5'
-              : 'opacity-50 hover:opacity-100'
+              ? 'opacity-100 ring-2 ring-outline-gray-4 ring-offset-1'
+              : 'opacity-60 hover:opacity-100'
           "
           :title="member.full_name"
+          :aria-pressed="filters.assignee === member.name"
           @click="toggleAssignee(member.name)"
         >
           <UserAvatar :user="member" size="sm" />
         </button>
         <button
-          class="grid size-6 shrink-0 place-items-center rounded-full border border-dashed border-outline-gray-3 text-ink-gray-5"
-          :class="filters.assignee === '__unassigned__' ? 'ring-2 ring-outline-gray-4' : ''"
+          class="grid size-6 shrink-0 place-items-center rounded-full border border-dashed border-outline-gray-3 text-ink-gray-5 hover:text-ink-gray-8"
+          :class="filters.assignee === '__unassigned__' ? 'ring-2 ring-outline-gray-4 ring-offset-1' : ''"
           title="Unassigned"
+          :aria-pressed="filters.assignee === '__unassigned__'"
           @click="toggleAssignee('__unassigned__')"
         >
           <LucideUserX class="size-3" />
         </button>
       </div>
 
-      <div class="w-32 shrink-0">
-        <NullableSelect v-model="filters.type" :options="typeOptions" placeholder="Type" />
-      </div>
+      <span class="mx-1 h-4 w-px shrink-0 bg-outline-gray-2" aria-hidden="true" />
 
-      <Dropdown :options="priorityOptions" placement="bottom-start">
-        <Button variant="ghost" size="sm">
+      <Dropdown :options="typeMenu">
+        <Button size="sm" :class="filters.type && activeButton">
+          <template #prefix><LucideShapes class="size-3.5" /></template>
+          {{ filters.type || 'Type' }}
+          <template #suffix><LucideChevronDown class="size-3.5 text-ink-gray-5" /></template>
+        </Button>
+      </Dropdown>
+
+      <Dropdown :options="priorityMenu">
+        <Button size="sm" :class="filters.priorities.length && activeButton">
           <template #prefix><LucideSignal class="size-3.5" /></template>
           {{ priorityLabel }}
+          <template #suffix><LucideChevronDown class="size-3.5 text-ink-gray-5" /></template>
         </Button>
       </Dropdown>
 
-      <Dropdown v-if="availableTags.length" :options="tagOptions" placement="bottom-start">
-        <Button variant="ghost" size="sm">
+      <Dropdown v-if="availableTags.length" :options="tagMenu">
+        <Button size="sm" :class="filters.tags.length && activeButton">
           <template #prefix><LucideTag class="size-3.5" /></template>
           {{ filters.tags.length ? filters.tags.join(', ') : 'Labels' }}
+          <template #suffix><LucideChevronDown class="size-3.5 text-ink-gray-5" /></template>
         </Button>
       </Dropdown>
 
-      <div class="w-36 shrink-0">
-        <NullableSelect
-          v-model="filters.swimlane"
-          :options="SWIMLANE_OPTIONS"
-          placeholder="Swimlanes"
-        />
-      </div>
+      <Dropdown :options="swimlaneMenu">
+        <Button size="sm" :class="filters.swimlane !== 'none' && activeButton">
+          <template #prefix><LucideRows3 class="size-3.5" /></template>
+          {{ swimlaneLabel }}
+          <template #suffix><LucideChevronDown class="size-3.5 text-ink-gray-5" /></template>
+        </Button>
+      </Dropdown>
 
-      <label class="flex items-center gap-1.5 text-sm text-ink-gray-6">
-        <input
-          v-model="filters.includeCompleted"
-          type="checkbox"
-          class="rounded border-outline-gray-3 text-ink-gray-9 focus:ring-0"
-        />
-        Show done
-      </label>
+      <Checkbox v-model="filters.includeCompleted" label="Show done" padded />
 
       <SavedViews />
 
@@ -112,8 +101,8 @@
         Clear
       </Button>
 
-      <span class="ml-auto text-xs tabular-nums text-ink-gray-5">
-        {{ visibleTasks.length }} of {{ tasks.length }} tasks
+      <span class="ml-auto text-sm tabular-nums text-ink-gray-5">
+        {{ visibleTasks.length }} of {{ tasks.length }}
       </span>
     </div>
 
@@ -127,9 +116,8 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { Button, Dropdown } from 'frappe-ui'
+import { Button, Checkbox, Dropdown, TextInput } from 'frappe-ui'
 import BoardFilterSheet from './BoardFilterSheet.vue'
-import NullableSelect from './NullableSelect.vue'
 import SavedViews from './SavedViews.vue'
 import UserAvatar from './UserAvatar.vue'
 import {
@@ -166,12 +154,49 @@ const typeOptions = computed(() => [
   ...taskTypes.value.map((t) => ({ label: t, value: t })),
 ])
 
-const priorityOptions = computed(() =>
-  taskPriorities.value.map((p) => ({ label: p, onClick: () => togglePriority(p) })),
+/** A filter that is doing something reads darker, so you can see why the board is short. */
+const activeButton = '!bg-surface-gray-3 !text-ink-gray-9'
+const tick = (on) => (on ? 'lucide-check' : '')
+
+const typeMenu = computed(() =>
+  typeOptions.value.map((o) => ({
+    label: o.label,
+    icon: tick((filters.type || '') === o.value),
+    onClick: () => (filters.type = o.value),
+  })),
 )
 
-const tagOptions = computed(() =>
-  availableTags.value.map((tag) => ({ label: tag, onClick: () => toggleTag(tag) })),
+const priorityMenu = computed(() =>
+  taskPriorities.value.map((p) => ({
+    label: p,
+    icon: tick(filters.priorities.includes(p)),
+    onClick: () => togglePriority(p),
+  })),
+)
+
+const tagMenu = computed(() =>
+  availableTags.value.map((tag) => ({
+    label: tag,
+    icon: tick(filters.tags.includes(tag)),
+    onClick: () => toggleTag(tag),
+  })),
+)
+
+const swimlaneMenu = computed(() => [
+  {
+    group: 'Swimlanes',
+    options: SWIMLANE_OPTIONS.map((o) => ({
+      label: o.label,
+      icon: tick(filters.swimlane === o.value),
+      onClick: () => (filters.swimlane = o.value),
+    })),
+  },
+])
+
+const swimlaneLabel = computed(() =>
+  filters.swimlane === 'none'
+    ? 'Swimlanes'
+    : `By ${SWIMLANE_OPTIONS.find((o) => o.value === filters.swimlane)?.label.toLowerCase()}`,
 )
 
 const priorityLabel = computed(() =>
@@ -207,8 +232,9 @@ function toggleAssignee(user) {
 let off = null
 onMounted(() => {
   off = on(EVENTS.FOCUS_SEARCH, () => {
-    const el = isNarrow.value ? mobileSearch.value : desktopSearch.value
-    el?.focus()
+    // frappe-ui's TextInput exposes focus() on its template ref
+    const input = isNarrow.value ? mobileSearch.value : desktopSearch.value
+    input?.focus()
   })
 })
 onUnmounted(() => off?.())

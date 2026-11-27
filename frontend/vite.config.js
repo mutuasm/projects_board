@@ -26,7 +26,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['feather-icons', 'tailwind.config.js', 'lowlight'],
+    include: ['tailwind.config.js', 'lowlight'],
   },
   server: {
     port: 8081,

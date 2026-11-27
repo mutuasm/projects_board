@@ -1,6 +1,6 @@
 <template>
   <FrappeUIProvider>
-    <div class="flex h-full w-full overflow-hidden bg-surface-white">
+    <div class="flex h-full w-full overflow-hidden bg-surface-base">
       <AppSidebar />
       <main class="flex min-w-0 flex-1 flex-col overflow-hidden">
         <!-- a grid row (not a percentage height) so every page gets a definite
@@ -15,15 +15,17 @@
     <RunningTimerBar />
     <CommandPalette v-model="paletteOpen" />
     <ShortcutsDialog v-model="showShortcuts" />
+    <ConfirmDialog />
   </FrappeUIProvider>
 </template>
 
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { FrappeUIProvider, useTheme } from 'frappe-ui'
+import { FrappeUIProvider, useColorScheme } from 'frappe-ui'
 import AppSidebar from '@/components/AppSidebar.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import RunningTimerBar from '@/components/RunningTimerBar.vue'
 import ShortcutsDialog from '@/components/ShortcutsDialog.vue'
 import TaskDetailPanel from '@/components/TaskDetailPanel.vue'
@@ -35,11 +37,11 @@ const router = useRouter()
 const route = useRoute()
 const showShortcuts = ref(false)
 
-const { initializeTheme } = useTheme()
+// restores the saved light/dark/system choice and follows the OS setting
+useColorScheme()
 
 let offShortcuts = null
 onMounted(() => {
-  initializeTheme()
   offShortcuts = on(EVENTS.SHOW_SHORTCUTS, () => (showShortcuts.value = true))
 })
 onUnmounted(() => offShortcuts?.())

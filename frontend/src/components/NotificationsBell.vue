@@ -1,12 +1,12 @@
 <template>
-  <Popover :placement="placement">
-    <template #target="{ togglePopover, isOpen }">
+  <Popover :side="side" :align="align">
+    <!-- the trigger toggles the panel itself (frappe-ui 1.x) -->
+    <template #trigger="{ open }">
       <!-- the sidebar brings its own trigger; the bell is the default -->
-      <slot name="target" v-bind="{ togglePopover, isOpen, unread }">
+      <slot name="target" v-bind="{ open, unread }">
         <button
-          class="relative grid size-9 shrink-0 place-items-center rounded-lg border border-outline-gray-2 text-ink-gray-7 transition-colors hover:bg-surface-gray-2"
+          class="relative grid size-9 shrink-0 place-items-center rounded-6 border border-outline-gray-2 text-ink-gray-7 transition-colors hover:bg-surface-gray-2"
           :aria-label="unread ? `Notifications, ${unread} unread` : 'Notifications'"
-          @click="togglePopover()"
         >
           <LucideBell class="size-4" />
           <span
@@ -19,10 +19,10 @@
       </slot>
     </template>
 
-    <template #body-main="{ close }">
+    <template #default="{ close }">
       <div class="flex max-h-[70vh] w-[calc(100vw-2rem)] flex-col sm:w-96">
         <div class="flex items-center gap-2 border-b border-outline-gray-2 px-4 py-3">
-          <h2 class="text-sm font-semibold text-ink-gray-9">Notifications</h2>
+          <h2 class="text-sm-semibold text-ink-gray-9">Notifications</h2>
           <span
             v-if="!connected"
             class="text-xs text-ink-gray-4"
@@ -32,7 +32,7 @@
           </span>
           <button
             v-if="unread"
-            class="ml-auto text-xs font-medium text-ink-gray-6 hover:text-ink-gray-9"
+            class="ml-auto text-xs-medium text-ink-gray-6 hover:text-ink-gray-9"
             @click="markAllRead"
           >
             Mark all read
@@ -123,7 +123,10 @@ import LucideMessageSquare from '~icons/lucide/message-square'
 import LucideShare2 from '~icons/lucide/share-2'
 import LucideBell from '~icons/lucide/bell'
 
-defineProps({ placement: { type: String, default: 'bottom-end' } })
+defineProps({
+  side: { type: String, default: 'bottom' },
+  align: { type: String, default: 'end' },
+})
 
 const router = useRouter()
 

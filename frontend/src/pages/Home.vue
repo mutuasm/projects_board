@@ -6,9 +6,9 @@
           <template #prefix><LucidePlus class="size-4" /></template>
           <span class="hidden sm:inline">New task</span>
         </Button>
-        <Dropdown :options="pageMenu" placement="right">
+        <Dropdown :options="pageMenu" align="end">
           <Button variant="ghost" label="More">
-            <LucideMoreHorizontal class="size-4" />
+            <template #icon><LucideMoreHorizontal class="size-4" /></template>
           </Button>
         </Dropdown>
       </template>
@@ -17,7 +17,7 @@
     <div class="thin-scrollbar min-h-0 flex-1 overflow-y-auto">
       <div class="mx-auto w-full max-w-[1072px] px-4 pb-12 pt-7 sm:px-8 sm:pt-10">
         <!-- greeting -->
-        <h2 class="text-xl font-semibold tracking-tight text-ink-gray-9">
+        <h2 class="text-2xl-semibold tracking-tight text-ink-gray-9">
           {{ greeting }}, {{ firstName }}
         </h2>
         <p class="mt-1.5 text-base text-ink-gray-5">{{ summaryLine }}</p>
@@ -25,11 +25,11 @@
         <!-- today's brief -->
         <section class="mt-10 sm:mt-14">
           <div class="flex flex-wrap items-center gap-x-2 gap-y-3">
-            <h3 class="text-lg font-semibold text-ink-gray-9">Today's brief</h3>
+            <h3 class="text-lg-semibold text-ink-gray-9">Today's brief</h3>
             <span class="text-base text-ink-gray-5">on</span>
-            <Dropdown :options="projectMenu" placement="left">
+            <Dropdown :options="projectMenu">
               <button
-                class="-ml-0.5 flex max-w-[16rem] items-center gap-1 rounded px-0.5 text-base text-ink-gray-8 hover:text-ink-gray-9"
+                class="-ml-0.5 flex max-w-[16rem] items-center gap-1 rounded-4 px-0.5 text-base text-ink-gray-8 hover:text-ink-gray-9"
               >
                 <span class="truncate">{{ projectLabel }}</span>
                 <LucideChevronDown class="size-3.5 shrink-0 text-ink-gray-5" />
@@ -38,7 +38,7 @@
             <TabButtons
               v-model="scope"
               class="ml-auto"
-              :buttons="[
+              :options="[
                 { label: 'Team', value: 'team' },
                 { label: 'For you', value: 'me' },
               ]"
@@ -51,8 +51,8 @@
               <div v-for="n in 4" :key="n" class="flex items-center gap-3 border-b border-outline-gray-1 px-4 py-3 last:border-0">
                 <div class="size-8 animate-pulse rounded-full bg-surface-gray-2" />
                 <div class="flex flex-1 flex-col gap-1.5">
-                  <div class="h-3 w-1/3 animate-pulse rounded bg-surface-gray-2" />
-                  <div class="h-2.5 w-1/5 animate-pulse rounded bg-surface-gray-2" />
+                  <div class="h-3 w-1/3 animate-pulse rounded-4 bg-surface-gray-2" />
+                  <div class="h-2.5 w-1/5 animate-pulse rounded-4 bg-surface-gray-2" />
                 </div>
               </div>
             </div>
@@ -69,7 +69,7 @@
               <span class="grid size-10 place-items-center rounded-full bg-surface-gray-2">
                 <LucideCheckCheck class="size-5 text-ink-gray-6" />
               </span>
-              <p class="mt-4 text-base font-medium text-ink-gray-9">You're all caught up</p>
+              <p class="mt-4 text-base-medium text-ink-gray-9">You're all caught up</p>
               <p class="mt-1 text-base text-ink-gray-5">
                 {{
                   scope === 'me'
@@ -93,7 +93,7 @@
                   </span>
                   <span class="min-w-0 flex-1">
                     <span class="flex min-w-0 items-baseline gap-2">
-                      <span class="shrink-0 text-sm font-medium" :class="kindOf(item).text">
+                      <span class="shrink-0 text-sm-medium" :class="kindOf(item).text">
                         {{ kindOf(item).label }}
                       </span>
                       <span class="truncate text-base text-ink-gray-9">{{ item.subject }}</span>
@@ -119,7 +119,7 @@
               </li>
               <li v-if="hiddenCount" class="px-4 py-2.5">
                 <button
-                  class="text-sm font-medium text-ink-gray-6 hover:text-ink-gray-9"
+                  class="text-sm-medium text-ink-gray-6 hover:text-ink-gray-9"
                   @click="showAll = true"
                 >
                   Show {{ hiddenCount }} more
@@ -132,10 +132,10 @@
         <!-- workload, and what is coming up -->
         <div class="mt-10 grid gap-5 sm:mt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
           <section class="pb-panel flex min-w-0 flex-col p-5">
-            <h3 class="text-lg font-semibold text-ink-gray-9">Team workload</h3>
+            <h3 class="text-lg-semibold text-ink-gray-9">Team workload</h3>
             <p class="mt-1 flex flex-wrap items-center gap-x-1 text-base text-ink-gray-5">
               Open work now, and tasks done in
-              <Dropdown :options="periodMenu" placement="left">
+              <Dropdown :options="periodMenu">
                 <button class="flex items-center gap-1 text-ink-gray-8 hover:text-ink-gray-9">
                   {{ periodLabel }}
                   <LucideChevronDown class="size-3.5 text-ink-gray-5" />
@@ -146,7 +146,7 @@
             <div class="thin-scrollbar -mx-1 mt-4 overflow-x-auto px-1">
               <div class="min-w-[560px]">
                 <div
-                  class="grid h-9 items-center gap-x-4 rounded-md bg-surface-gray-2 px-3 text-sm text-ink-gray-5"
+                  class="grid h-9 items-center gap-x-4 rounded-5 bg-surface-gray-2 px-3 text-sm text-ink-gray-5"
                   :style="{ gridTemplateColumns: workloadColumns }"
                 >
                   <span>Member</span>
@@ -185,7 +185,7 @@
                       class="text-right tabular-nums"
                       :class="
                         column.key === 'overdue' && member.overdue
-                          ? 'font-medium text-ink-red-4'
+                          ? 'font-medium text-ink-red-7'
                           : member[column.key]
                             ? 'text-ink-gray-8'
                             : 'text-ink-gray-4'
@@ -204,7 +204,7 @@
                 <div v-else class="flex flex-col">
                   <div v-for="n in 3" :key="n" class="flex items-center gap-2 px-3 py-3">
                     <div class="size-6 animate-pulse rounded-full bg-surface-gray-2" />
-                    <div class="h-3 w-32 animate-pulse rounded bg-surface-gray-2" />
+                    <div class="h-3 w-32 animate-pulse rounded-4 bg-surface-gray-2" />
                   </div>
                 </div>
               </div>
@@ -214,7 +214,7 @@
           <section class="pb-panel flex min-w-0 flex-col p-5">
             <div class="flex items-start gap-2">
               <div class="min-w-0 flex-1">
-                <h3 class="text-lg font-semibold text-ink-gray-9">Milestones</h3>
+                <h3 class="text-lg-semibold text-ink-gray-9">Milestones</h3>
                 <p class="mt-1 text-base text-ink-gray-5">Next 30 days</p>
               </div>
               <Button
@@ -224,24 +224,24 @@
                 title="New milestone"
                 @click="openNewTask({ milestone: true })"
               >
-                <LucidePlus class="size-4" />
+                <template #icon><LucidePlus class="size-4" /></template>
               </Button>
             </div>
 
             <ul v-if="milestones?.length" class="mt-3 flex flex-col">
               <li v-for="milestone in milestones" :key="milestone.name">
                 <button
-                  class="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-surface-gray-1"
+                  class="-mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-6 px-2 py-2 text-left hover:bg-surface-gray-1"
                   @click="openTask(milestone.name)"
                 >
                   <span
-                    class="flex w-11 shrink-0 flex-col items-center rounded-md py-1 leading-none"
-                    :class="isLate(milestone) ? 'bg-surface-red-2 text-ink-red-4' : 'bg-surface-gray-2 text-ink-gray-7'"
+                    class="flex w-11 shrink-0 flex-col items-center rounded-5 py-1 leading-none"
+                    :class="isLate(milestone) ? 'bg-surface-red-2 text-ink-red-7' : 'bg-surface-gray-2 text-ink-gray-7'"
                   >
                     <span class="text-[10px] font-medium uppercase">
                       {{ dayjs(milestone.exp_end_date).format('ddd') }}
                     </span>
-                    <span class="mt-0.5 text-base font-semibold tabular-nums">
+                    <span class="mt-0.5 text-base-semibold tabular-nums">
                       {{ dayjs(milestone.exp_end_date).format('D') }}
                     </span>
                   </span>
@@ -263,7 +263,7 @@
               <p class="text-base text-ink-gray-6">No milestones coming up.</p>
             </div>
             <div v-else class="mt-3 flex flex-col gap-2">
-              <div v-for="n in 3" :key="n" class="h-10 animate-pulse rounded-md bg-surface-gray-2" />
+              <div v-for="n in 3" :key="n" class="h-10 animate-pulse rounded-5 bg-surface-gray-2" />
             </div>
           </section>
         </div>
@@ -308,14 +308,14 @@ import LucideArrowUp from '~icons/lucide/arrow-up'
 const BRIEF_LIMIT = 8
 
 const KINDS = {
-  overdue: { label: 'Overdue', icon: LucideAlarmClock, bubble: 'bg-surface-red-2 text-ink-red-4', text: 'text-ink-red-4' },
-  due_today: { label: 'Due today', icon: LucideCalendarClock, bubble: 'bg-surface-amber-2 text-ink-amber-3', text: 'text-ink-amber-3' },
-  review: { label: 'In review', icon: LucideEye, bubble: 'bg-surface-violet-1 text-ink-violet-1', text: 'text-ink-violet-1' },
-  assigned: { label: 'Assigned to you', icon: LucideUserPlus, bubble: 'bg-surface-blue-2 text-ink-blue-3', text: 'text-ink-blue-3' },
-  comment: { label: 'New comment', icon: LucideMessageSquare, bubble: 'bg-surface-cyan-1 text-ink-cyan-1', text: 'text-ink-cyan-1' },
-  blocked: { label: 'Blocked', icon: LucideLock, bubble: 'bg-surface-orange-1 text-ink-amber-3', text: 'text-ink-amber-3' },
+  overdue: { label: 'Overdue', icon: LucideAlarmClock, bubble: 'bg-surface-red-2 text-ink-red-7', text: 'text-ink-red-7' },
+  due_today: { label: 'Due today', icon: LucideCalendarClock, bubble: 'bg-surface-amber-2 text-ink-amber-5', text: 'text-ink-amber-5' },
+  review: { label: 'In review', icon: LucideEye, bubble: 'bg-surface-violet-2 text-ink-violet-5', text: 'text-ink-violet-5' },
+  assigned: { label: 'Assigned to you', icon: LucideUserPlus, bubble: 'bg-surface-blue-2 text-ink-blue-5', text: 'text-ink-blue-5' },
+  comment: { label: 'New comment', icon: LucideMessageSquare, bubble: 'bg-surface-cyan-2 text-ink-cyan-5', text: 'text-ink-cyan-5' },
+  blocked: { label: 'Blocked', icon: LucideLock, bubble: 'bg-surface-orange-2 text-ink-amber-5', text: 'text-ink-amber-5' },
   unassigned: { label: 'Unassigned', icon: LucideUserX, bubble: 'bg-surface-gray-2 text-ink-gray-6', text: 'text-ink-gray-6' },
-  done: { label: 'Done today', icon: LucideCircleCheck, bubble: 'bg-surface-green-2 text-ink-green-3', text: 'text-ink-green-3' },
+  done: { label: 'Done today', icon: LucideCircleCheck, bubble: 'bg-surface-green-2 text-ink-green-5', text: 'text-ink-green-5' },
 }
 
 const WORKLOAD_COLUMNS = [
@@ -414,7 +414,7 @@ function whenOf(item) {
 }
 
 function whenClass(item) {
-  return item.kind === 'overdue' ? 'text-ink-red-4' : 'text-ink-gray-5'
+  return item.kind === 'overdue' ? 'text-ink-red-7' : 'text-ink-gray-5'
 }
 
 const visibleItems = computed(() => {
@@ -512,7 +512,7 @@ function openNewTask({ milestone = false } = {}) {
   showNewTask.value = true
 }
 
-const pageMenu = [{ label: 'Refresh', icon: 'refresh-cw', onClick: refresh }]
+const pageMenu = [{ label: 'Refresh', icon: 'lucide-refresh-cw', onClick: refresh }]
 
 watch(scope, (value) => {
   store('pb:home-scope', value)

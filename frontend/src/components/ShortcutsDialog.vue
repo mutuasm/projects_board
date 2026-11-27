@@ -1,13 +1,13 @@
 <template>
-  <Dialog v-model="show" :options="{ title: 'Keyboard shortcuts', size: 'md' }">
-    <template #body-content>
+  <Dialog v-model="show" title="Keyboard shortcuts" size="md">
+    <template #default>
       <dl class="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2.5 text-sm">
         <template v-for="row in shortcuts" :key="row.label">
           <dt class="flex gap-1">
             <kbd
               v-for="key in row.keys"
               :key="key"
-              class="rounded border border-outline-gray-2 bg-surface-gray-1 px-1.5 py-0.5 font-mono text-xs text-ink-gray-7"
+              class="rounded-4 border border-outline-gray-2 bg-surface-gray-1 px-1.5 py-0.5 font-mono text-xs text-ink-gray-7"
             >
               {{ key }}
             </kbd>

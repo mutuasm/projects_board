@@ -11,7 +11,7 @@
         <TabButtons
           v-if="!isNarrow"
           v-model="layout"
-          :buttons="[
+          :options="[
             { label: 'Cards', value: 'cards' },
             { label: 'Table', value: 'table' },
           ]"
@@ -30,17 +30,14 @@
     <header class="shrink-0 border-b border-outline-gray-2 px-4 py-2.5 sm:px-5">
       <!-- search + status sit on their own row so neither gets squeezed -->
       <div class="flex items-center gap-2">
-        <div class="relative min-w-0 flex-1 sm:max-w-xs">
-          <LucideSearch
-            class="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-ink-gray-4"
-          />
-          <input
-            v-model="search"
-            type="text"
-            placeholder="Search projects"
-            class="pb-input h-9 w-full pl-7 pr-2 text-base sm:h-7 sm:text-sm"
-          />
-        </div>
+        <TextInput
+          v-model="search"
+          type="search"
+          placeholder="Search projects"
+          class="min-w-0 flex-1 sm:max-w-xs"
+        >
+          <template #prefix><LucideSearch class="size-3.5 text-ink-gray-5" /></template>
+        </TextInput>
         <!-- Select hardcodes w-full on its trigger, so size it from a wrapper -->
         <div class="w-32 shrink-0">
           <NullableSelect v-model="statusFilter" :options="statusOptions" />
@@ -90,7 +87,7 @@
               :style="{ backgroundColor: projectColor(project.name) }"
             />
             <div class="min-w-0 flex-1">
-              <h2 class="truncate text-base font-medium text-ink-gray-9">
+              <h2 class="truncate text-base-medium text-ink-gray-9">
                 {{ project.project_name }}
               </h2>
               <p
@@ -123,7 +120,7 @@
               <span
                 v-if="project.expected_end_date"
                 :class="
-                  isOverdue(project.expected_end_date, project.status) ? 'text-ink-red-3' : ''
+                  isOverdue(project.expected_end_date, project.status) ? 'text-ink-red-5' : ''
                 "
               >
                 · due {{ formatDate(project.expected_end_date) }}
@@ -139,7 +136,7 @@
             <div class="flex items-center gap-2">
               <div class="h-1 flex-1 overflow-hidden rounded-full bg-surface-gray-2">
                 <div
-                  class="h-full rounded-full bg-surface-green-3"
+                  class="h-full rounded-full bg-surface-green-7"
                   :style="{ width: `${project.percent_complete || 0}%` }"
                 />
               </div>
@@ -151,83 +148,64 @@
         </router-link>
       </div>
 
-      <!-- table -->
-      <div
+      <!-- table: frappe-ui's ListView, the same list CRM and Helpdesk use -->
+      <ListView
         v-else
-        class="pb-panel thin-scrollbar overflow-x-auto"
+        class="h-auto"
+        :columns="tableColumns"
+        :rows="paged.slice(filtered)"
+        row-key="name"
+        :options="{
+          selectable: false,
+          showTooltip: false,
+          getRowRoute: (row) => ({ name: 'Board', params: { project: row.name } }),
+        }"
       >
-        <table class="w-full min-w-[46rem] text-sm">
-          <thead class="bg-surface-gray-1 text-xs uppercase tracking-wide text-ink-gray-5">
-            <tr>
-              <th class="px-3 py-2 text-left font-medium">Project</th>
-              <th class="px-3 py-2 text-left font-medium">Status</th>
-              <th class="px-3 py-2 text-left font-medium">Open</th>
-              <th class="px-3 py-2 text-left font-medium">Progress</th>
-              <th class="px-3 py-2 text-left font-medium">Due</th>
-              <th class="px-3 py-2 text-left font-medium">Team</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="project in paged.slice(filtered)"
-              :key="project.name"
-              class="cursor-pointer border-t border-outline-gray-1 bg-surface-white hover:bg-surface-gray-1"
-              @click="$router.push({ name: 'Board', params: { project: project.name } })"
-            >
-              <td class="px-3 py-2">
-                <div class="flex items-center gap-2.5">
-                  <span
-                    class="size-3 shrink-0 rounded-[4px]"
-                    :style="{ backgroundColor: projectColor(project.name) }"
-                  />
-                  <div class="min-w-0">
-                    <p class="font-medium text-ink-gray-8">{{ project.project_name }}</p>
-                    <p class="text-xs text-ink-gray-5">{{ project.name }}</p>
-                  </div>
-                </div>
-              </td>
-              <td class="px-3 py-2">
-                <Badge
-                  :theme="PROJECT_STATUS_STYLES[project.status]?.theme || 'gray'"
-                  variant="subtle"
-                  size="sm"
-                >
-                  {{ project.status }}
-                </Badge>
-              </td>
-              <td class="px-3 py-2 tabular-nums text-ink-gray-7">
-                {{ project.open_tasks }}/{{ project.total_tasks }}
-              </td>
-              <td class="px-3 py-2">
-                <div class="flex items-center gap-2">
-                  <div class="h-1.5 w-20 overflow-hidden rounded-full bg-surface-gray-2">
-                    <div
-                      class="h-full rounded-full bg-surface-green-3"
-                      :style="{ width: `${project.percent_complete || 0}%` }"
-                    />
-                  </div>
-                  <span class="text-xs tabular-nums text-ink-gray-6">
-                    {{ Math.round(project.percent_complete || 0) }}%
-                  </span>
-                </div>
-              </td>
-              <td
-                class="px-3 py-2 text-xs"
-                :class="
-                  isOverdue(project.expected_end_date, project.status)
-                    ? 'font-medium text-ink-red-3'
-                    : 'text-ink-gray-6'
-                "
-              >
-                {{ formatDate(project.expected_end_date) || '—' }}
-              </td>
-              <td class="px-3 py-2">
-                <AvatarStack :users="project.members" :max="3" size="xs" />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+        <template #cell="{ column, row }">
+          <div v-if="column.key === 'project_name'" class="flex min-w-0 items-center gap-2.5">
+            <span
+              class="size-2.5 shrink-0 rounded-[3px]"
+              :style="{ backgroundColor: projectColor(row.name) }"
+            />
+            <span class="truncate text-base text-ink-gray-9">{{ row.project_name }}</span>
+          </div>
+          <Badge
+            v-else-if="column.key === 'status'"
+            :theme="PROJECT_STATUS_STYLES[row.status]?.theme || 'gray'"
+            variant="subtle"
+          >
+            {{ row.status }}
+          </Badge>
+          <span v-else-if="column.key === 'open_tasks'" class="tabular-nums text-ink-gray-7">
+            {{ row.open_tasks }} of {{ row.total_tasks }}
+          </span>
+          <div v-else-if="column.key === 'percent_complete'" class="flex w-full items-center gap-2">
+            <div class="h-1 flex-1 overflow-hidden rounded-full bg-surface-gray-2">
+              <div
+                class="h-full rounded-full bg-surface-green-7"
+                :style="{ width: `${row.percent_complete || 0}%` }"
+              />
+            </div>
+            <span class="w-8 text-right text-sm tabular-nums text-ink-gray-5">
+              {{ Math.round(row.percent_complete || 0) }}%
+            </span>
+          </div>
+          <span
+            v-else-if="column.key === 'expected_end_date'"
+            :class="
+              isOverdue(row.expected_end_date, row.status) ? 'text-ink-red-5' : 'text-ink-gray-6'
+            "
+          >
+            {{ formatDate(row.expected_end_date) || '—' }}
+          </span>
+          <AvatarStack
+            v-else-if="column.key === 'members' && row.members?.length"
+            :users="row.members"
+            :max="3"
+            size="xs"
+          />
+        </template>
+      </ListView>
 
       <LoadMore v-if="filtered.length > paged.limit.value" @more="paged.more" />
     </div>
@@ -239,7 +217,9 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Badge, Button, LoadingIndicator, TabButtons } from 'frappe-ui'
+import { Badge, Button, LoadingIndicator, TabButtons, TextInput } from 'frappe-ui'
+// ListView stays in experimental until frappe-ui/list reaches parity
+import { ListView } from 'frappe-ui/experimental'
 import NullableSelect from '@/components/NullableSelect.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import AvatarStack from '@/components/AvatarStack.vue'
@@ -269,6 +249,15 @@ const statusOptions = computed(() => [
   { label: 'Active', value: ACTIVE },
   ...projectStatuses.value.map((s) => ({ label: s, value: s })),
 ])
+
+const tableColumns = [
+  { label: 'Project', key: 'project_name', width: 3 },
+  { label: 'Status', key: 'status', width: '8rem' },
+  { label: 'Open tasks', key: 'open_tasks', width: '8rem' },
+  { label: 'Progress', key: 'percent_complete', width: '11rem' },
+  { label: 'Due', key: 'expected_end_date', width: '8rem' },
+  { label: 'Team', key: 'members', width: '7rem' },
+]
 
 const filtered = computed(() => {
   const term = search.value.trim().toLowerCase()

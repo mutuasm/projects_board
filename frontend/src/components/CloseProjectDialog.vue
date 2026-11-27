@@ -1,6 +1,6 @@
 <template>
-  <Dialog v-model="show" :options="{ title: 'Close project', size: 'md' }">
-    <template #body-content>
+  <Dialog v-model="show" title="Close project" size="md">
+    <template #default>
       <div class="flex flex-col gap-3">
         <section>
           <label class="mb-1.5 block text-xs text-ink-gray-5">Outcome</label>
@@ -8,7 +8,7 @@
             <button
               v-for="outcome in OUTCOMES"
               :key="outcome.value"
-              class="rounded-lg border p-2.5 text-left transition-colors"
+              class="rounded-6 border p-2.5 text-left transition-colors"
               :class="
                 form.status === outcome.value
                   ? 'border-outline-gray-4 bg-surface-gray-2'
@@ -16,13 +16,13 @@
               "
               @click="form.status = outcome.value"
             >
-              <p class="text-sm font-medium text-ink-gray-8">{{ outcome.label }}</p>
+              <p class="text-sm-medium text-ink-gray-8">{{ outcome.label }}</p>
               <p class="mt-0.5 text-xs text-ink-gray-5">{{ outcome.hint }}</p>
             </button>
           </div>
         </section>
 
-        <div v-if="openTasks" class="rounded-lg bg-surface-gray-1 p-3">
+        <div v-if="openTasks" class="rounded-6 bg-surface-gray-1 p-3">
           <p class="text-sm text-ink-gray-8">
             {{ openTasks }} {{ openTasks === 1 ? 'task is' : 'tasks are' }} still open.
           </p>

@@ -9,7 +9,7 @@
     />
     <Tooltip v-if="overflow.length" :text="overflowNames">
       <div
-        class="flex items-center justify-center rounded-full bg-surface-gray-3 text-ink-gray-7 ring-2 ring-surface-white"
+        class="flex items-center justify-center rounded-full bg-surface-gray-3 text-ink-gray-7 ring-2 ring-surface-base"
         :class="overflowSizeClass"
       >
         +{{ overflow.length }}

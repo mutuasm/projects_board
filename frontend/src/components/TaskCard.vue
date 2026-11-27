@@ -7,7 +7,7 @@
     <div class="flex items-start gap-2">
       <LucideFlag
         v-if="task.is_milestone"
-        class="mt-0.5 size-3.5 shrink-0 text-ink-amber-3"
+        class="mt-0.5 size-3.5 shrink-0 text-ink-amber-5"
       />
       <Tooltip v-if="task.auto_repeat" text="Repeating task">
         <LucideRepeat class="mt-0.5 size-3.5 shrink-0 text-ink-gray-5" />
@@ -60,7 +60,7 @@
       >
         <span
           class="inline-flex shrink-0 items-center gap-0.5 text-xs"
-          :class="reviewLate ? 'font-medium text-ink-red-3' : 'text-ink-amber-3'"
+          :class="reviewLate ? 'font-medium text-ink-red-5' : 'text-ink-amber-5'"
         >
           <LucideClipboardCheck class="size-3" />
           {{ dueLabel(task.review_date) }}
@@ -68,13 +68,13 @@
       </Tooltip>
 
       <Tooltip v-if="task.is_blocked" :text="blockedLabel">
-        <LucideLock class="size-3.5 shrink-0 text-ink-amber-3" />
+        <LucideLock class="size-3.5 shrink-0 text-ink-amber-5" />
       </Tooltip>
 
       <span
         v-if="task.exp_end_date"
         class="shrink-0 text-xs"
-        :class="overdue ? 'font-medium text-ink-red-3' : 'text-ink-gray-5'"
+        :class="overdue ? 'font-medium text-ink-red-5' : 'text-ink-gray-5'"
       >
         {{ dueLabel(task.exp_end_date) }}
       </span>
@@ -89,7 +89,7 @@
 
       <span
         v-if="task.task_weight"
-        class="shrink-0 rounded bg-surface-gray-2 px-1 text-[11px] tabular-nums text-ink-gray-6"
+        class="shrink-0 rounded-4 bg-surface-gray-2 px-1 text-[11px] tabular-nums text-ink-gray-6"
         :title="`Weight ${task.task_weight}`"
       >
         {{ formatNumber(task.task_weight) }}
@@ -106,7 +106,7 @@
       class="mt-2 h-0.5 w-full overflow-hidden rounded-full bg-surface-gray-2"
     >
       <div
-        class="h-full rounded-full bg-surface-blue-3"
+        class="h-full rounded-full bg-surface-blue-6"
         :style="{ width: `${task.progress}%` }"
       />
     </div>

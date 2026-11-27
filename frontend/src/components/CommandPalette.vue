@@ -1,6 +1,6 @@
 <template>
-  <Dialog v-model="show" :options="{ size: 'xl' }">
-    <template #body>
+  <Dialog v-model="show" size="xl" bare>
+    <template #default>
       <div class="flex flex-col">
         <div class="flex items-center gap-2 border-b border-outline-gray-2 px-4 py-3">
           <LucideSearch class="size-4 shrink-0 text-ink-gray-4" />
@@ -17,7 +17,7 @@
           />
           <LoadingIndicator v-if="searching" class="size-4 text-ink-gray-5" />
           <kbd
-            class="hidden rounded border border-outline-gray-2 px-1.5 py-0.5 text-xs text-ink-gray-5 sm:block"
+            class="hidden rounded-4 border border-outline-gray-2 px-1.5 py-0.5 text-xs text-ink-gray-5 sm:block"
           >
             esc
           </kbd>
@@ -27,14 +27,14 @@
           <template v-for="group in groups" :key="group.label">
             <p
               v-if="group.items.length"
-              class="px-2.5 pb-1 pt-2 text-xs font-medium uppercase tracking-wide text-ink-gray-5"
+              class="px-2.5 pb-1 pt-2 text-xs-medium uppercase tracking-wide text-ink-gray-5"
             >
               {{ group.label }}
             </p>
             <button
               v-for="item in group.items"
               :key="item.key"
-              class="flex w-full items-center gap-2.5 rounded px-2.5 py-2 text-left"
+              class="flex w-full items-center gap-2.5 rounded-4 px-2.5 py-2 text-left"
               :class="
                 flat[cursor]?.key === item.key ? 'bg-surface-gray-3' : 'hover:bg-surface-gray-2'
               "

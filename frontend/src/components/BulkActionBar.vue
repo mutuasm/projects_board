@@ -7,17 +7,17 @@
   >
     <div
       v-if="count"
-      class="fixed bottom-4 left-1/2 z-30 flex max-w-[95vw] -translate-x-1/2 flex-wrap items-center gap-2 rounded-full border border-outline-gray-3 bg-surface-white px-3 py-2 shadow-md"
+      class="fixed bottom-4 left-1/2 z-30 flex max-w-[95vw] -translate-x-1/2 flex-wrap items-center gap-2 rounded-full border border-outline-gray-3 bg-surface-base px-3 py-2 shadow-md"
       style="margin-bottom: env(safe-area-inset-bottom)"
     >
-      <span class="px-1 text-sm font-medium tabular-nums text-ink-gray-8">
+      <span class="px-1 text-sm-medium tabular-nums text-ink-gray-8">
         {{ count }} selected
       </span>
 
-      <Dropdown :options="statusOptions" placement="top-start">
+      <Dropdown :options="statusOptions" side="top">
         <Button variant="ghost" size="sm" :loading="busy === 'status'">Status</Button>
       </Dropdown>
-      <Dropdown :options="priorityOptions" placement="top-start">
+      <Dropdown :options="priorityOptions" side="top">
         <Button variant="ghost" size="sm" :loading="busy === 'priority'">Priority</Button>
       </Dropdown>
       <Button variant="ghost" size="sm" @click="showAssign = true">Assign</Button>
@@ -34,14 +34,14 @@
         <template #prefix><LucideTrash2 class="size-3.5" /></template>
         Delete
       </Button>
-      <Button variant="ghost" size="sm" @click="clearSelection">
-        <LucideX class="size-4" />
+      <Button variant="ghost" size="sm" label="Clear selection" @click="clearSelection">
+        <template #icon><LucideX class="size-4" /></template>
       </Button>
     </div>
   </Transition>
 
-  <Dialog v-model="showAssign" :options="{ title: `Assign ${count} tasks`, size: 'sm' }">
-    <template #body-content>
+  <Dialog v-model="showAssign" :title="`Assign ${count} tasks`" size="sm">
+    <template #default>
       <p class="mb-2 text-xs text-ink-gray-5">
         This replaces the current assignees on every selected task.
       </p>
@@ -66,6 +66,7 @@ import api from '@/data/api'
 import { clearSelection, removeTask, selection, upsertTask } from '@/data/board'
 import { boardStatuses, taskPriorities } from '@/data/session'
 import { statusStyle } from '@/utils/constants'
+import { confirmAction } from '@/utils/confirm'
 
 const busy = ref(null)
 const showAssign = ref(false)
@@ -126,8 +127,16 @@ async function applyAssignees() {
   }
 }
 
-async function remove() {
-  if (!window.confirm(`Delete ${count.value} tasks? This cannot be undone.`)) return
+function remove() {
+  confirmAction({
+    title: `Delete ${count.value} tasks?`,
+    message: "The selected tasks will be deleted. This can't be undone.",
+    label: 'Delete',
+    onConfirm: deleteSelected,
+  })
+}
+
+async function deleteSelected() {
   busy.value = 'delete'
   try {
     const result = await api.bulkDeleteTasks(names.value)

@@ -11,7 +11,7 @@
         <span class="hidden text-xs text-ink-gray-5 sm:inline">View</span>
         <TabButtons
           v-model="mode"
-          :buttons="[
+          :options="[
             { label: 'Tree', value: 'tree' },
             { label: 'Status', value: 'status' },
             { label: 'Flat', value: 'flat' },
@@ -31,15 +31,13 @@
 
       <!-- header row -->
       <div
-        class="sticky top-0 z-10 hidden grid-cols-[1.5rem_minmax(0,1fr)_7rem_7rem_6rem_6rem_5rem] gap-3 border-b border-outline-gray-2 bg-surface-white px-2 py-2 text-xs font-medium uppercase tracking-wide text-ink-gray-5 md:grid"
+        class="sticky top-0 z-10 hidden grid-cols-[1.5rem_minmax(0,1fr)_7rem_7rem_6rem_6rem_5rem] gap-3 border-b border-outline-gray-2 bg-surface-base px-2 py-2 text-xs-medium uppercase tracking-wide text-ink-gray-5 md:grid"
       >
-        <input
-          type="checkbox"
-          class="size-3.5 rounded border-outline-gray-3 text-ink-gray-9 focus:ring-0"
-          :checked="allSelected"
-          :indeterminate.prop="someSelected && !allSelected"
+        <Checkbox
+          :model-value="allSelected"
+          :indeterminate="someSelected && !allSelected"
           aria-label="Select all tasks"
-          @change="toggleAll"
+          @update:model-value="toggleAll"
         />
         <span>Task</span>
         <span>Status</span>
@@ -69,7 +67,7 @@
         <section v-for="group in paged.cap(openGroups)" :key="group.key" class="mt-1">
           <button
             v-if="group.key !== '__flat__'"
-            class="flex w-full items-center gap-2 rounded px-2 py-2 text-left hover:bg-surface-gray-1"
+            class="flex w-full items-center gap-2 rounded-4 px-2 py-2 text-left hover:bg-surface-gray-1"
             @click="toggle(group.key)"
           >
             <LucideChevronRight
@@ -77,7 +75,7 @@
               :class="collapsed.has(group.key) ? '' : 'rotate-90'"
             />
             <span class="size-2 shrink-0 rounded-full" :class="group.dot" />
-            <span class="truncate text-sm font-medium text-ink-gray-8">{{ group.label }}</span>
+            <span class="truncate text-sm-medium text-ink-gray-8">{{ group.label }}</span>
             <span class="shrink-0 text-xs tabular-nums text-ink-gray-4">
               {{ group.total }}
             </span>
@@ -104,7 +102,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { Button, TabButtons, toast } from 'frappe-ui'
+import { Button, Checkbox, TabButtons, toast } from 'frappe-ui'
 import BulkActionBar from '@/components/BulkActionBar.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import LoadMore from '@/components/LoadMore.vue'
@@ -181,10 +179,10 @@ const allSelected = computed(
 )
 const someSelected = computed(() => selection.value.size > 0)
 
-function toggleAll(event) {
+function toggleAll(checked) {
   selectMany(
     visibleTasks.value.map((t) => t.name),
-    event.target.checked,
+    checked,
   )
 }
 

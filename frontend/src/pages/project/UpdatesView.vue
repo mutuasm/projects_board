@@ -8,7 +8,7 @@
         v-if="permissions.canPostUpdate"
         class="pb-panel p-4"
       >
-        <h2 class="text-sm font-semibold text-ink-gray-8">Post a status update</h2>
+        <h2 class="text-sm-semibold text-ink-gray-8">Post a status update</h2>
         <p class="mt-0.5 text-xs text-ink-gray-5">
           Saved as a native Project Update, so it is visible in the desk too.
         </p>
@@ -62,13 +62,13 @@
           <!-- a scheduled check-in: one email out, each reply appended to it -->
           <template v-if="update.is_checkin">
             <span
-              class="relative z-10 grid size-8 shrink-0 place-items-center rounded-full bg-surface-green-2 text-ink-green-3"
+              class="relative z-10 grid size-8 shrink-0 place-items-center rounded-full bg-surface-green-2 text-ink-green-5"
             >
               <LucideMailCheck class="size-4" />
             </span>
             <div class="pb-panel min-w-0 flex-1 p-3">
               <div class="flex flex-wrap items-baseline gap-x-2">
-                <span class="text-sm font-medium text-ink-gray-8">Check-in</span>
+                <span class="text-sm-medium text-ink-gray-8">Check-in</span>
                 <span class="text-xs text-ink-gray-5">{{ formatDate(update.date) }}</span>
                 <span class="text-xs text-ink-gray-4">
                   {{ update.notes.length }} {{ update.notes.length === 1 ? 'reply' : 'replies' }}
@@ -78,7 +78,7 @@
                 <li v-for="note in update.notes" :key="note.idx" class="flex gap-2.5">
                   <UserAvatar :user="{ full_name: note.full_name, user_image: note.user_image }" />
                   <div class="min-w-0">
-                    <p class="text-xs font-medium text-ink-gray-8">{{ note.full_name }}</p>
+                    <p class="text-xs-medium text-ink-gray-8">{{ note.full_name }}</p>
                     <p class="whitespace-pre-wrap text-sm leading-relaxed text-ink-gray-7">
                       {{ htmlToText(note.project_status) }}
                     </p>
@@ -98,7 +98,7 @@
             />
             <div class="pb-panel min-w-0 flex-1 p-3">
               <div class="flex flex-wrap items-baseline gap-x-2">
-                <span class="text-sm font-medium text-ink-gray-8">{{ update.full_name }}</span>
+                <span class="text-sm-medium text-ink-gray-8">{{ update.full_name }}</span>
                 <span class="text-xs text-ink-gray-5">{{ formatDate(update.date) }}</span>
                 <span class="text-xs text-ink-gray-4">{{ timeAgo(update.creation) }}</span>
               </div>

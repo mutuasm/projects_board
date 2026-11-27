@@ -8,9 +8,9 @@
         </span>
       </template>
       <template #actions>
-        <Dropdown :options="moreMenu" placement="right">
+        <Dropdown :options="moreMenu" align="end">
           <Button variant="ghost" label="More">
-            <LucideMoreHorizontal class="size-4" />
+            <template #icon><LucideMoreHorizontal class="size-4" /></template>
           </Button>
         </Dropdown>
         <Button v-if="permissions.canCreateTask" variant="solid" @click="showNewTask = true">
@@ -24,36 +24,26 @@
     <div
       class="flex shrink-0 flex-wrap items-center gap-2 border-b border-outline-gray-2 px-4 py-2.5 sm:px-5"
     >
-      <div class="relative min-w-0 basis-full sm:max-w-xs sm:flex-1 sm:basis-auto">
-        <LucideSearch
-          class="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-ink-gray-4"
-        />
-        <input
-          v-model="search"
-          type="search"
-          placeholder="Filter my tasks"
-          class="pb-input h-9 w-full pl-7 pr-2 text-base sm:h-7 sm:text-sm"
-        />
-      </div>
+      <TextInput
+        v-model="search"
+        type="search"
+        placeholder="Filter my tasks"
+        class="min-w-0 basis-full sm:max-w-xs sm:flex-1 sm:basis-auto"
+      >
+        <template #prefix><LucideSearch class="size-3.5 text-ink-gray-5" /></template>
+      </TextInput>
       <TabButtons
         v-model="groupBy"
-        :buttons="[
+        :options="[
           { label: 'Due date', value: 'due' },
           { label: 'Project', value: 'project' },
           { label: 'Status', value: 'status' },
         ]"
       />
-      <label class="ml-auto flex items-center gap-1.5 text-sm text-ink-gray-6">
-        <input
-          v-model="includeCompleted"
-          type="checkbox"
-          class="rounded border-outline-gray-3 text-ink-gray-9 focus:ring-0"
-        />
-        Show done
-      </label>
+      <Checkbox v-model="includeCompleted" label="Show done" padded class="ml-auto" />
       <Tooltip text="Refresh">
         <Button variant="ghost" :loading="loading" label="Refresh" @click="load">
-          <LucideRefreshCw class="size-4" />
+          <template #icon><LucideRefreshCw class="size-4" /></template>
         </Button>
       </Tooltip>
     </div>
@@ -62,14 +52,14 @@
       <div class="mx-auto max-w-5xl px-4 pb-safe-bottom pt-6 sm:px-6">
         <!-- the one line that matters most, then the quiet context -->
         <div v-if="active.length" class="mb-6">
-          <p class="text-xl font-semibold text-ink-gray-9">{{ headline }}</p>
+          <p class="text-2xl-semibold text-ink-gray-9">{{ headline }}</p>
           <p class="mt-1 text-sm text-ink-gray-5">{{ todayLabel }} · {{ contextLine }}</p>
         </div>
 
         <!-- sign-offs come first: they block someone else -->
         <section v-if="reviews.length" class="mb-8">
-          <h2 class="mb-2 flex items-center gap-2 text-sm font-medium text-ink-gray-9">
-            <LucideClipboardCheck class="size-4 text-ink-amber-3" />
+          <h2 class="mb-2 flex items-center gap-2 text-sm-medium text-ink-gray-9">
+            <LucideClipboardCheck class="size-4 text-ink-amber-5" />
             Waiting on your review
             <span class="tabular-nums text-ink-gray-5">{{ reviews.length }}</span>
           </h2>
@@ -87,7 +77,7 @@
                   {{ task.project_title || 'No project' }}
                   <template v-if="task.review_date">
                     ·
-                    <span :class="reviewLate(task) ? 'text-ink-red-3' : ''">
+                    <span :class="reviewLate(task) ? 'text-ink-red-5' : ''">
                       review by {{ dueLabel(task.review_date) }}
                     </span>
                   </template>
@@ -136,8 +126,8 @@
           <section v-for="group in paged.cap(groups)" :key="group.key">
             <!-- group head: collapsible, so a long "No due date" can be tucked away -->
             <button
-              class="flex w-full items-center gap-2 border-b border-outline-gray-2 pb-2 text-left text-sm font-medium"
-              :class="group.key === 'overdue' ? 'text-ink-red-4' : 'text-ink-gray-9'"
+              class="flex w-full items-center gap-2 border-b border-outline-gray-2 pb-2 text-left text-sm-medium"
+              :class="group.key === 'overdue' ? 'text-ink-red-7' : 'text-ink-gray-9'"
               :aria-expanded="!collapsed.has(group.key)"
               @click="toggleGroup(group.key)"
             >
@@ -204,7 +194,7 @@
                       v-if="task.my_assignment === 'done' && !isDone(task)"
                       text="You marked your part done; the task itself is still open"
                     >
-                      <LucideCircleCheck class="size-3.5 shrink-0 text-ink-green-3" />
+                      <LucideCircleCheck class="size-3.5 shrink-0 text-ink-green-5" />
                     </Tooltip>
                   </div>
                   <!-- phones: one muted line under the title -->
@@ -219,7 +209,7 @@
                 <span
                   v-if="task.status === 'Pending Review' && task.review_date"
                   class="hidden shrink-0 items-center gap-1 text-sm md:inline-flex"
-                  :class="reviewLate(task) ? 'text-ink-red-3' : 'text-ink-amber-3'"
+                  :class="reviewLate(task) ? 'text-ink-red-5' : 'text-ink-amber-5'"
                 >
                   <LucideClipboardCheck class="size-3.5" />
                   {{ dueLabel(task.review_date) }}
@@ -273,7 +263,16 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Button, Dropdown, LoadingIndicator, TabButtons, Tooltip, toast } from 'frappe-ui'
+import {
+  Button,
+  Checkbox,
+  Dropdown,
+  LoadingIndicator,
+  TabButtons,
+  TextInput,
+  Tooltip,
+  toast,
+} from 'frappe-ui'
 import AvatarStack from '@/components/AvatarStack.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import CreateProjectDialog from '@/components/CreateProjectDialog.vue'
@@ -351,17 +350,17 @@ function toggleGroup(key) {
 /** Things you reach for now and then, kept out of the way. */
 const moreMenu = computed(() => [
   ...(permissions.value.canCreateProject
-    ? [{ label: 'New project', icon: 'folder-plus', onClick: () => (showNewProject.value = true) }]
+    ? [{ label: 'New project', icon: 'lucide-folder-plus', onClick: () => (showNewProject.value = true) }]
     : []),
   {
     label: 'My ToDo list in Desk',
-    icon: 'external-link',
+    icon: 'lucide-external-link',
     onClick: () =>
       window.open(`/desk/todo?allocated_to=${encodeURIComponent(user.value?.name || '')}`, '_blank'),
   },
   {
     label: 'Timesheets in Desk',
-    icon: 'external-link',
+    icon: 'lucide-external-link',
     onClick: () => window.open('/desk/timesheet', '_blank'),
   },
 ])
@@ -422,7 +421,7 @@ const sharedLabel = (task) =>
     .map((u) => u.full_name || u.name)
     .join(', ')}`
 const dueClass = (task) =>
-  isOverdue(task.exp_end_date, task.status) ? 'font-medium text-ink-red-3' : 'text-ink-gray-6'
+  isOverdue(task.exp_end_date, task.status) ? 'font-medium text-ink-red-5' : 'text-ink-gray-6'
 
 const active = computed(() => myTasks.value.filter((t) => !isDone(t)))
 

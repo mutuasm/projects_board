@@ -1,7 +1,7 @@
 <template>
   <div class="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
-    <LucideTriangleAlert class="size-8 text-ink-red-3" />
-    <p class="text-base font-medium text-ink-gray-8">Something went wrong</p>
+    <LucideTriangleAlert class="size-8 text-ink-red-5" />
+    <p class="text-base-medium text-ink-gray-8">Something went wrong</p>
     <p class="max-w-md text-sm text-ink-gray-6">{{ message }}</p>
   </div>
 </template>

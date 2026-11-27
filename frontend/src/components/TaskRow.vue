@@ -14,20 +14,19 @@
       aria-hidden="true"
     />
 
-    <input
-      type="checkbox"
-      class="relative hidden size-3.5 rounded border-outline-gray-3 text-ink-gray-9 focus:ring-0 md:block"
-      :checked="selection.has(task.name)"
+    <Checkbox
+      class="relative hidden md:inline-flex"
+      :model-value="selection.has(task.name)"
       :aria-label="`Select ${task.subject}`"
       @click.stop
-      @change="toggleSelected(task.name)"
+      @update:model-value="toggleSelected(task.name)"
     />
 
     <div class="flex min-w-0 items-start gap-1.5 md:items-center">
       <!-- expander, or a spacer so leaf rows still line up -->
       <button
         v-if="hasChildren"
-        class="grid size-4 shrink-0 place-items-center rounded text-ink-gray-5 hover:bg-surface-gray-3"
+        class="grid size-4 shrink-0 place-items-center rounded-4 text-ink-gray-5 hover:bg-surface-gray-3"
         :aria-label="expanded ? 'Collapse' : 'Expand'"
         @click.stop="$emit('toggle')"
       >
@@ -46,7 +45,7 @@
       />
       <LucideFlag
         v-else-if="task.is_milestone"
-        class="size-3.5 shrink-0 text-ink-amber-3"
+        class="size-3.5 shrink-0 text-ink-amber-5"
       />
       <span
         v-else-if="task.type"
@@ -65,14 +64,14 @@
 
       <span
         v-if="hasChildren"
-        class="shrink-0 rounded bg-surface-gray-2 px-1.5 text-[11px] tabular-nums text-ink-gray-6"
+        class="shrink-0 rounded-4 bg-surface-gray-2 px-1.5 text-[11px] tabular-nums text-ink-gray-6"
         :title="`${childCount} child ${childCount === 1 ? 'task' : 'tasks'}`"
       >
         {{ childCount }}
       </span>
       <LucideLock
         v-if="task.is_blocked"
-        class="size-3.5 shrink-0 text-ink-amber-3"
+        class="size-3.5 shrink-0 text-ink-amber-5"
         title="Blocked"
       />
       <span
@@ -109,7 +108,7 @@
         class="text-xs"
         :class="
           isOverdue(task.exp_end_date, task.status)
-            ? 'font-medium text-ink-red-3'
+            ? 'font-medium text-ink-red-5'
             : 'text-ink-gray-6'
         "
       >
@@ -131,6 +130,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { Checkbox } from 'frappe-ui'
 import AvatarStack from './AvatarStack.vue'
 import PriorityIcon from './PriorityIcon.vue'
 import StatusPill from './StatusPill.vue'

@@ -24,10 +24,10 @@
             v-for="day in WEEKDAYS"
             :key="day"
             type="button"
-            class="h-8 min-w-10 rounded-lg px-2 text-sm font-medium transition-colors"
+            class="h-8 min-w-10 rounded-6 px-2 text-sm-medium transition-colors"
             :class="
               (modelValue.repeat_on_days || []).includes(day)
-                ? 'bg-surface-gray-7 text-ink-white'
+                ? 'bg-surface-gray-10 text-ink-base'
                 : 'bg-surface-gray-2 text-ink-gray-7 hover:bg-surface-gray-3'
             "
             :aria-pressed="(modelValue.repeat_on_days || []).includes(day)"
@@ -64,7 +64,7 @@
         <label class="flex items-center gap-2 text-sm text-ink-gray-7">
           <input
             type="checkbox"
-            class="rounded text-ink-gray-9 focus:ring-0"
+            class="rounded-4 text-ink-gray-9 focus:ring-0"
             :checked="Boolean(modelValue.end_date)"
             @change="(e) => update({ end_date: e.target.checked ? defaultEnd : '' })"
           />

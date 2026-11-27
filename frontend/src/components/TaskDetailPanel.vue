@@ -22,7 +22,7 @@
       <aside
         v-if="taskName"
         data-task-panel
-        class="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-outline-gray-2 bg-surface-white pb-safe-bottom pt-safe-top shadow-2xl transition-[max-width] duration-200 sm:border-l"
+        class="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-outline-gray-2 bg-surface-base pb-safe-bottom pt-safe-top shadow-2xl transition-[max-width] duration-200 sm:border-l"
         :class="wide ? 'sm:max-w-5xl' : 'sm:max-w-2xl'"
       >
         <!-- header -->
@@ -30,7 +30,7 @@
           class="flex shrink-0 items-center gap-1 border-b border-outline-gray-2 px-3 py-3 sm:px-5"
         >
           <button
-            class="tap-target -ml-1 mr-1 grid place-items-center rounded p-1 text-ink-gray-7 hover:bg-surface-gray-2 sm:hidden"
+            class="tap-target -ml-1 mr-1 grid place-items-center rounded-4 p-1 text-ink-gray-7 hover:bg-surface-gray-2 sm:hidden"
             aria-label="Close"
             @click="close"
           >
@@ -39,10 +39,10 @@
 
           <button
             v-if="task"
-            class="flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+            class="flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-6 border px-3 text-sm-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60"
             :class="
               isDone
-                ? 'border-transparent bg-surface-green-2 text-ink-green-3 hover:bg-surface-green-3/40'
+                ? 'border-transparent bg-surface-green-2 text-ink-green-5 hover:bg-surface-green-3'
                 : 'border-outline-gray-3 text-ink-gray-8 hover:bg-surface-gray-2'
             "
             :disabled="!task.can_write || completing"
@@ -93,7 +93,7 @@
                 <component :is="wide ? LucideMinimize2 : LucideMaximize2" class="size-[18px]" />
               </button>
             </Tooltip>
-            <Dropdown :options="menuOptions" placement="bottom-end">
+            <Dropdown :options="menuOptions" align="end">
               <button class="pb-icon-btn" aria-label="More actions">
                 <LucideMoreHorizontal class="size-[18px]" />
               </button>
@@ -109,7 +109,7 @@
         <!-- someone else saved while you were mid-edit: don't yank the fields away -->
         <div
           v-if="remoteChanged && task"
-          class="flex shrink-0 items-center gap-2 border-b border-outline-gray-2 bg-surface-amber-1 px-4 py-2 text-sm text-ink-amber-3 sm:px-6"
+          class="flex shrink-0 items-center gap-2 border-b border-outline-gray-2 bg-surface-amber-1 px-4 py-2 text-sm text-ink-amber-5 sm:px-6"
         >
           <LucideRefreshCw class="size-4 shrink-0" />
           <span class="flex-1">Someone else just changed this task.</span>
@@ -131,7 +131,7 @@
             <div>
               <button
                 v-if="task.epic"
-                class="mb-2 flex w-fit items-center gap-1.5 text-xs font-medium text-ink-gray-6 hover:text-ink-gray-8"
+                class="mb-2 flex w-fit items-center gap-1.5 text-xs-medium text-ink-gray-6 hover:text-ink-gray-8"
                 @click="open(task.epic.name)"
               >
                 <span
@@ -145,7 +145,7 @@
                 ref="subjectBox"
                 v-model="draftSubject"
                 rows="1"
-                class="pb-title -mx-1.5 w-[calc(100%+0.75rem)] resize-none rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-[26px] font-semibold leading-tight tracking-tight text-ink-gray-9 hover:border-outline-gray-2 focus:border-outline-gray-3 focus:outline-none focus:ring-0"
+                class="pb-title -mx-1.5 w-[calc(100%+0.75rem)] resize-none rounded-6 border border-transparent bg-transparent px-1.5 py-0.5 text-[26px] font-semibold leading-tight tracking-tight text-ink-gray-9 hover:border-outline-gray-2 focus:border-outline-gray-3 focus:outline-none focus:ring-0"
                 :readonly="!task.can_write"
                 @input="autoGrow"
                 @blur="saveSubject"
@@ -174,11 +174,11 @@
                 <router-link
                   v-if="task.project"
                   :to="{ name: 'Board', params: { project: task.project } }"
-                  class="-mx-1.5 flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 text-sm font-medium text-ink-gray-8 hover:bg-surface-gray-2"
+                  class="-mx-1.5 flex min-w-0 items-center gap-2 rounded-6 px-1.5 py-1 text-sm-medium text-ink-gray-8 hover:bg-surface-gray-2"
                   @click="close"
                 >
                   <span
-                    class="grid size-6 shrink-0 place-items-center rounded-md"
+                    class="grid size-6 shrink-0 place-items-center rounded-5"
                     :style="{
                       backgroundColor: `${projectColor(task.project)}26`,
                       color: projectColor(task.project),
@@ -193,13 +193,12 @@
 
               <div class="col-span-2 min-w-0 sm:col-span-1">
                 <p class="pb-field-label">Dates</p>
-                <Popover placement="bottom-start">
-                  <template #target="{ togglePopover }">
+                <Popover>
+                  <template #trigger>
                     <button
-                      class="-mx-1.5 flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 text-left text-sm font-medium hover:bg-surface-gray-2 disabled:cursor-default disabled:hover:bg-transparent"
-                      :class="overdue ? 'text-ink-red-3' : 'text-ink-gray-8'"
+                      class="-mx-1.5 flex min-w-0 items-center gap-2 rounded-6 px-1.5 py-1 text-left text-sm-medium hover:bg-surface-gray-2 disabled:cursor-default disabled:hover:bg-transparent"
+                      :class="overdue ? 'text-ink-red-5' : 'text-ink-gray-8'"
                       :disabled="!task.can_write"
-                      @click="togglePopover()"
                     >
                       <span
                         class="grid size-6 shrink-0 place-items-center rounded-full border border-outline-gray-3 text-ink-gray-6"
@@ -209,15 +208,18 @@
                       <span class="truncate">{{ dateRange || 'Set dates' }}</span>
                     </button>
                   </template>
-                  <template #body-main>
+                  <template #default>
                     <div class="flex w-64 flex-col gap-3 p-3">
-                      <FormControl
+                      <!-- native date inputs: FormControl's date type is now a
+                           DatePicker, and a popover inside this popover would
+                           close it on pick -->
+                      <TextInput
                         type="date"
                         label="Start"
                         :model-value="dateOnly(task.exp_start_date)"
                         @update:model-value="(v) => saveDate('exp_start_date', v)"
                       />
-                      <FormControl
+                      <TextInput
                         type="date"
                         label="Due"
                         :model-value="dateOnly(task.exp_end_date)"
@@ -270,7 +272,7 @@
                   step="0.5"
                   min="0"
                   :readonly="!task.can_write"
-                  class="-mx-1.5 h-7 w-20 rounded border border-transparent bg-transparent px-1.5 text-sm text-ink-gray-8 hover:border-outline-gray-2 focus:border-outline-gray-3 focus:outline-none focus:ring-0"
+                  class="-mx-1.5 h-7 w-20 rounded-4 border border-transparent bg-transparent px-1.5 text-sm text-ink-gray-8 hover:border-outline-gray-2 focus:border-outline-gray-3 focus:outline-none focus:ring-0"
                   @blur="saveWeight"
                 />
               </div>
@@ -302,12 +304,13 @@
 
               <div v-if="task.status === 'Completed' || task.closing_date" class="min-w-0">
                 <p class="pb-field-label">Closed on</p>
-                <input
-                  type="date"
-                  class="-mx-1.5 h-7 rounded border border-transparent bg-transparent px-1.5 text-sm text-ink-gray-8 hover:border-outline-gray-2 focus:border-outline-gray-3 focus:outline-none focus:ring-0"
-                  :value="dateOnly(task.closing_date)"
+                <DateField
+                  class="-mx-2 w-40"
+                  variant="ghost"
+                  placeholder="Not set"
+                  :model-value="dateOnly(task.closing_date)"
                   :readonly="!task.can_write"
-                  @change="(e) => saveDate('closing_date', e.target.value)"
+                  @update:model-value="(v) => saveDate('closing_date', v)"
                 />
               </div>
 
@@ -325,20 +328,20 @@
 
                   <button
                     v-if="task.repeat && !task.repeat.is_template"
-                    class="text-sm font-medium text-ink-gray-7 underline underline-offset-2 hover:text-ink-gray-9"
+                    class="text-sm-medium text-ink-gray-7 underline underline-offset-2 hover:text-ink-gray-9"
                     @click="open(task.repeat.reference_document)"
                   >
                     Open series
                   </button>
 
                   <template v-else-if="task.can_write && permissions.canRepeatTasks">
-                    <Popover placement="bottom-start">
-                      <template #target="{ togglePopover }">
-                        <Button size="sm" @click="startRepeatEdit(togglePopover)">
+                    <Popover @open="startRepeatEdit">
+                      <template #trigger>
+                        <Button size="sm">
                           {{ task.repeat ? 'Edit' : 'Make it repeat' }}
                         </Button>
                       </template>
-                      <template #body-main="{ close: closePopover }">
+                      <template #default="{ close: closePopover }">
                         <div class="flex w-80 flex-col gap-3 p-3">
                           <RepeatEditor v-model="repeatDraft" :anchor="repeatAnchor" />
                           <ErrorMessage :message="repeatError" />
@@ -384,22 +387,22 @@
               class="pb-panel flex flex-col gap-3 p-3 sm:flex-row sm:items-center"
             >
               <div class="flex min-w-0 flex-1 items-start gap-2.5">
-                <LucideClipboardCheck class="mt-0.5 size-4 shrink-0 text-ink-amber-3" />
+                <LucideClipboardCheck class="mt-0.5 size-4 shrink-0 text-ink-amber-5" />
                 <div class="min-w-0">
-                  <p class="text-sm font-medium text-ink-gray-9">In review</p>
+                  <p class="text-sm-medium text-ink-gray-9">In review</p>
                   <p class="text-xs" :class="reviewHint.class">{{ reviewHint.text }}</p>
                 </div>
               </div>
-              <label class="flex shrink-0 items-center gap-2 text-xs text-ink-gray-6">
+              <div class="flex shrink-0 items-center gap-2 text-xs text-ink-gray-6">
                 Review by
-                <input
-                  type="date"
-                  class="pb-input h-8 px-2 text-sm"
-                  :value="dateOnly(task.review_date)"
+                <DateField
+                  class="w-40"
+                  placeholder="No date"
+                  :model-value="dateOnly(task.review_date)"
                   :readonly="!task.can_write"
-                  @change="(e) => saveDate('review_date', e.target.value)"
+                  @update:model-value="(v) => saveDate('review_date', v)"
                 />
-              </label>
+              </div>
               <div v-if="task.can_write" class="flex shrink-0 gap-2">
                 <Button size="sm" :loading="completing" @click="setStatus('Working')">
                   Send back
@@ -416,14 +419,13 @@
             <!-- description -->
             <section>
               <h3 class="pb-section-title">Description</h3>
-              <TextEditor
+              <RichEditor
                 :key="`desc-${task.name}`"
-                editor-class="prose-f min-h-16 -mx-2.5 rounded-lg border border-transparent px-2.5 py-2 text-ink-gray-7 hover:border-outline-gray-2 focus:border-outline-gray-3 focus:outline-none"
-                :content="task.description || ''"
+                v-model="draftDescription"
+                editor-class="prose-f min-h-16 -mx-2.5 rounded-6 border border-transparent px-2.5 py-2 text-ink-gray-7 hover:border-outline-gray-2 focus:border-outline-gray-3 focus:outline-none"
                 :editable="task.can_write"
                 placeholder="Add a description…"
                 @blur="saveDescription"
-                @change="(value) => (draftDescription = value)"
               />
             </section>
 
@@ -442,7 +444,7 @@
                   class="h-1 w-20 overflow-hidden rounded-full bg-surface-gray-2"
                 >
                   <span
-                    class="block h-full rounded-full bg-surface-green-3"
+                    class="block h-full rounded-full bg-surface-green-7"
                     :style="{ width: `${subtaskPercent}%` }"
                   />
                 </span>
@@ -548,7 +550,7 @@
                   />
                   <div class="min-w-0 flex-1">
                     <div class="flex items-baseline gap-2">
-                      <span class="text-sm font-medium text-ink-gray-9">
+                      <span class="text-sm-medium text-ink-gray-9">
                         {{ comment.full_name }}
                       </span>
                       <span class="text-xs text-ink-gray-5">
@@ -556,7 +558,7 @@
                       </span>
                       <button
                         v-if="comment.owner === currentUser"
-                        class="ml-auto text-xs text-ink-gray-5 hover:text-ink-red-3"
+                        class="ml-auto text-xs text-ink-gray-5 hover:text-ink-red-5"
                         @click="removeComment(comment)"
                       >
                         Delete
@@ -605,7 +607,7 @@
                     </p>
                     <div
                       v-if="item.kind === 'comment'"
-                      class="prose-f mt-1.5 rounded-lg bg-surface-gray-1 px-3 py-2 text-sm"
+                      class="prose-f mt-1.5 rounded-6 bg-surface-gray-1 px-3 py-2 text-sm"
                       v-html="item.content"
                     />
                   </div>
@@ -616,17 +618,15 @@
               <div class="flex gap-3">
                 <UserAvatar :user="user" size="xl" />
                 <div
-                  class="min-w-0 flex-1 rounded-xl border border-outline-gray-2 transition-colors focus-within:border-outline-gray-4"
+                  class="min-w-0 flex-1 rounded-7 border border-outline-gray-2 transition-colors focus-within:border-outline-gray-4"
                   @keydown.meta.enter.prevent="postComment"
                   @keydown.ctrl.enter.prevent="postComment"
                 >
-                  <TextEditor
-                    ref="commentEditor"
+                  <RichEditor
                     :key="`comment-${task.name}-${commentKey}`"
+                    v-model="newComment"
                     editor-class="prose-f min-h-14 px-3 pt-2.5 pb-1 focus:outline-none"
-                    content=""
                     placeholder="Write a comment…"
-                    @change="(value) => (newComment = value)"
                   />
                   <div class="flex items-center gap-2 px-2 pb-2">
                     <span class="hidden px-1 text-xs text-ink-gray-4 sm:inline">
@@ -672,7 +672,7 @@ import {
   FormControl,
   LoadingIndicator,
   Popover,
-  TextEditor,
+  TextInput,
   Tooltip,
   toast,
 } from 'frappe-ui'
@@ -691,6 +691,8 @@ import ProgressSlider from './ProgressSlider.vue'
 import RepeatEditor from './RepeatEditor.vue'
 import StatusPill from './StatusPill.vue'
 import UserAvatar from './UserAvatar.vue'
+import DateField from './DateField.vue'
+import RichEditor from './RichEditor.vue'
 import api from '@/data/api'
 import { removeTask, upsertTask } from '@/data/board'
 import { permissions, taskTypes, user } from '@/data/session'
@@ -702,6 +704,7 @@ import { describeRepeat } from '@/utils/repeat'
 import { watchDoc } from '@/data/realtime'
 
 import LucideMaximize2 from '~icons/lucide/maximize-2'
+import { confirmAction } from '@/utils/confirm'
 import LucideMinimize2 from '~icons/lucide/minimize-2'
 
 const route = useRoute()
@@ -798,12 +801,12 @@ const reviewHint = computed(() => {
     return t?.exp_end_date
       ? {
           text: 'Set a review date - without one, ERPNext marks it Overdue once the due date passes.',
-          class: 'text-ink-amber-3',
+          class: 'text-ink-amber-5',
         }
       : { text: 'Waiting for sign-off. A review date sets when it is due.', class: 'text-ink-gray-5' }
   }
   if (dayjs(t.review_date).isBefore(dayjs().startOf('day'))) {
-    return { text: `Review was due ${dayjs(t.review_date).format('D MMM')}.`, class: 'text-ink-red-3' }
+    return { text: `Review was due ${dayjs(t.review_date).format('D MMM')}.`, class: 'text-ink-red-5' }
   }
   return {
     text: `Due for review ${dayjs(t.review_date).format('D MMM')} - it won't go Overdue before then.`,
@@ -877,13 +880,13 @@ const menuOptions = computed(() => [
     ? [
         {
           label: 'Log time manually…',
-          icon: 'clock',
+          icon: 'lucide-clock',
           onClick: () => (showLogTime.value = true),
         },
       ]
     : []),
   ...(task.value?.can_delete
-    ? [{ label: 'Delete task', icon: 'trash-2', onClick: destroy }]
+    ? [{ label: 'Delete task', icon: 'lucide-trash-2', onClick: destroy }]
     : []),
 ])
 
@@ -891,7 +894,8 @@ function close() {
   closeTask()
 }
 
-function startRepeatEdit(toggle) {
+/** Runs as the repeat popover opens, so the editor starts from the saved rule. */
+function startRepeatEdit() {
   const r = task.value?.repeat
   repeatDraft.value = r
     ? {
@@ -902,7 +906,6 @@ function startRepeatEdit(toggle) {
       }
     : null
   repeatError.value = ''
-  toggle()
 }
 
 async function saveRepeat(closePopover) {
@@ -1112,16 +1115,23 @@ async function removeComment(comment) {
   }
 }
 
-async function destroy() {
-  if (!window.confirm(`Delete ${task.value.name}? This cannot be undone.`)) return
-  try {
-    await api.deleteTask(task.value.name)
-    removeTask(task.value.name)
-    toast.success('Task deleted')
-    close()
-  } catch (e) {
-    toast.error(e?.messages?.join(', ') || e?.message || 'Could not delete the task')
-  }
+function destroy() {
+  const { name, subject } = task.value
+  confirmAction({
+    title: 'Delete task?',
+    message: `${subject} (${name}) will be deleted. This can't be undone.`,
+    label: 'Delete',
+    onConfirm: async () => {
+      try {
+        await api.deleteTask(name)
+        removeTask(name)
+        toast.success('Task deleted')
+        close()
+      } catch (e) {
+        toast.error(e?.messages?.join(', ') || e?.message || 'Could not delete the task')
+      }
+    },
+  })
 }
 
 function onSubtaskCreated(created) {

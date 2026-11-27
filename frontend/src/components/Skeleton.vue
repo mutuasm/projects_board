@@ -1,5 +1,5 @@
 <template>
-  <div class="animate-pulse rounded bg-surface-gray-2" :class="className" :style="style" />
+  <div class="animate-pulse rounded-4 bg-surface-gray-2" :class="className" :style="style" />
 </template>
 
 <script setup>

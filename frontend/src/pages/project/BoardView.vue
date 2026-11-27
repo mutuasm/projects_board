@@ -27,7 +27,7 @@
             <!-- swimlane header -->
             <header v-if="!single" class="sticky left-0 mb-2 flex w-fit items-center gap-2">
               <button
-                class="flex items-center gap-2 rounded px-1.5 py-1 hover:bg-surface-gray-2"
+                class="flex items-center gap-2 rounded-4 px-1.5 py-1 hover:bg-surface-gray-2"
                 @click="toggleLane(lane.key)"
               >
                 <LucideChevronRight
@@ -40,7 +40,7 @@
                   :style="{ backgroundColor: lane.color }"
                 />
                 <UserAvatar v-if="lane.user" :user="lane.user" size="sm" />
-                <span class="text-sm font-medium text-ink-gray-8">{{ lane.label }}</span>
+                <span class="text-sm-medium text-ink-gray-8">{{ lane.label }}</span>
                 <span class="text-xs tabular-nums text-ink-gray-4">{{ lane.count }}</span>
               </button>
             </header>
@@ -61,7 +61,7 @@
                   class="flex items-center gap-2 border-b border-outline-gray-2 px-1 pb-2"
                 >
                   <span class="size-1.5 rounded-full" :class="statusStyle(status).dot" />
-                  <h2 class="text-xs font-medium uppercase tracking-wide text-ink-gray-6">
+                  <h2 class="text-xs-medium uppercase tracking-wide text-ink-gray-6">
                     {{ statusStyle(status).label || status }}
                   </h2>
                   <span class="text-xs tabular-nums text-ink-gray-4">
@@ -69,7 +69,7 @@
                   </span>
                   <button
                     v-if="permissions.canCreateTask && status !== 'Cancelled'"
-                    class="tap-target ml-auto grid place-items-center rounded p-1 text-ink-gray-4 hover:bg-surface-gray-2 hover:text-ink-gray-7"
+                    class="tap-target ml-auto grid place-items-center rounded-4 p-1 text-ink-gray-4 hover:bg-surface-gray-2 hover:text-ink-gray-7"
                     :aria-label="`Add task to ${status}`"
                     @click="quickAdd(status)"
                   >
@@ -81,7 +81,7 @@
                   :list="lane.columns[status]"
                   :group="{ name: 'tasks' }"
                   item-key="name"
-                  class="thin-scrollbar flex min-h-16 flex-1 flex-col gap-2 overflow-y-auto rounded-b-md px-1 pb-3 pt-2 transition-colors"
+                  class="thin-scrollbar flex min-h-16 flex-1 flex-col gap-2 overflow-y-auto rounded-b-5 px-1 pb-3 pt-2 transition-colors"
                   ghost-class="task-ghost"
                   drag-class="task-drag"
                   :animation="150"
@@ -102,7 +102,7 @@
                     />
                     <div
                       v-if="!(lane.columns[status] || []).length"
-                      class="rounded-md border border-dashed border-outline-gray-2 py-6 text-center text-xs text-ink-gray-4"
+                      class="rounded-5 border border-dashed border-outline-gray-2 py-6 text-center text-xs text-ink-gray-4"
                     >
                       Drop tasks here
                     </div>

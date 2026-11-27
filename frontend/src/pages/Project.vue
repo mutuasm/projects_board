@@ -13,9 +13,9 @@
         <span class="size-2.5 shrink-0 rounded-[3px]" :style="{ backgroundColor: color }" />
 
         <!-- the name doubles as a project switcher -->
-        <Dropdown :options="switcherOptions" placement="left">
+        <Dropdown :options="switcherOptions">
           <button
-            class="flex min-w-0 items-center gap-1 rounded-md px-1 py-0.5 hover:bg-surface-gray-2"
+            class="flex min-w-0 items-center gap-1 rounded-5 px-1 py-0.5 hover:bg-surface-gray-2"
           >
             <h1 class="min-w-0 truncate font-medium text-ink-gray-9">
               {{ doc?.project_name || project }}
@@ -43,7 +43,7 @@
           </span>
           <div class="h-1.5 w-20 overflow-hidden rounded-full bg-surface-gray-2">
             <div
-              class="h-full rounded-full bg-surface-green-3"
+              class="h-full rounded-full bg-surface-green-7"
               :style="{ width: `${doc.percent_complete || 0}%` }"
             />
           </div>
@@ -58,9 +58,9 @@
           <template #prefix><LucidePlus class="size-4" /></template>
           New task
         </Button>
-        <Dropdown :options="projectMenu" placement="right">
+        <Dropdown :options="projectMenu" align="end">
           <Button variant="ghost" label="Project actions">
-            <LucideMoreHorizontal class="size-4" />
+            <template #icon><LucideMoreHorizontal class="size-4" /></template>
           </Button>
         </Dropdown>
       </template>
@@ -71,7 +71,7 @@
       <div v-if="doc" class="mt-2.5 flex items-center gap-2 md:hidden">
         <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-gray-2">
           <div
-            class="h-full rounded-full bg-surface-green-3"
+            class="h-full rounded-full bg-surface-green-7"
             :style="{ width: `${doc.percent_complete || 0}%` }"
           />
         </div>
@@ -137,7 +137,7 @@
     -->
     <button
       v-if="permissions.canCreateTask"
-      class="fixed bottom-5 right-5 grid size-14 place-items-center rounded-full bg-surface-gray-7 text-ink-white shadow-md active:scale-95 md:hidden"
+      class="fixed bottom-5 right-5 grid size-14 place-items-center rounded-full bg-surface-gray-10 text-ink-base shadow-md active:scale-95 md:hidden"
       style="margin-bottom: env(safe-area-inset-bottom)"
       aria-label="New task"
       @click="showNewTask = true"
@@ -232,7 +232,7 @@ const color = computed(() => projectColor(props.project))
 const switcherOptions = computed(() => [
   {
     group: 'Switch project',
-    items: projects.value
+    options: projects.value
       .filter((p) => ['Open', 'On hold'].includes(p.status) && p.name !== props.project)
       .slice(0, 12)
       .map((p) => ({
@@ -242,8 +242,8 @@ const switcherOptions = computed(() => [
   },
   {
     group: '',
-    items: [
-      { label: 'All projects', icon: 'grid', onClick: () => router.push({ name: 'Projects' }) },
+    options: [
+      { label: 'All projects', icon: 'lucide-grid', onClick: () => router.push({ name: 'Projects' }) },
     ],
   },
 ])
@@ -261,27 +261,27 @@ const isClosed = computed(() => ['Completed', 'Cancelled'].includes(doc.value?.s
 const isOnHold = computed(() => doc.value?.status === 'On hold')
 
 const projectMenu = computed(() => [
-  { label: 'Open in Desk', icon: 'external-link', onClick: openInDesk },
+  { label: 'Open in Desk', icon: 'lucide-external-link', onClick: openInDesk },
   {
     label: 'Refresh',
-    icon: 'refresh-cw',
+    icon: 'lucide-refresh-cw',
     onClick: () => loadProject(props.project, { force: true }),
   },
   ...(canEditProject.value && doc.value
     ? [
-        { label: 'Rename project', icon: 'pencil', onClick: () => (showRename.value = true) },
+        { label: 'Rename project', icon: 'lucide-pencil', onClick: () => (showRename.value = true) },
         ...statusActions.value,
       ]
     : []),
 ])
 
 const statusActions = computed(() => {
-  if (isClosed.value) return [{ label: 'Reopen project', icon: 'rotate-ccw', onClick: reopen }]
+  if (isClosed.value) return [{ label: 'Reopen project', icon: 'lucide-rotate-ccw', onClick: reopen }]
   return [
     isOnHold.value
-      ? { label: 'Resume project', icon: 'play-circle', onClick: reopen }
-      : { label: 'Put on hold', icon: 'pause-circle', onClick: putOnHold },
-    { label: 'Close project', icon: 'archive', onClick: () => (showClose.value = true) },
+      ? { label: 'Resume project', icon: 'lucide-play-circle', onClick: reopen }
+      : { label: 'Put on hold', icon: 'lucide-pause-circle', onClick: putOnHold },
+    { label: 'Close project', icon: 'lucide-archive', onClick: () => (showClose.value = true) },
   ]
 })
 

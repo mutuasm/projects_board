@@ -1,6 +1,6 @@
 <template>
-  <Dialog v-model="show" :options="{ title: 'Log time', size: 'md' }">
-    <template #body-content>
+  <Dialog v-model="show" title="Log time" size="md">
+    <template #default>
       <div class="flex flex-col gap-3">
         <p class="text-sm text-ink-gray-6">
           Creates a native Timesheet entry against

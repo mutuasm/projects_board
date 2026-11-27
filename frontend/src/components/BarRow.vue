@@ -34,7 +34,7 @@ const props = defineProps({
   value: { type: Number, default: 0 },
   max: { type: Number, default: 1 },
   dotClass: { type: String, default: '' },
-  barClass: { type: String, default: 'bg-surface-blue-3' },
+  barClass: { type: String, default: 'bg-surface-blue-6' },
 })
 
 const percent = computed(() =>

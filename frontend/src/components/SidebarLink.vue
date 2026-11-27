@@ -36,10 +36,10 @@ const props = defineProps({
 })
 
 const slots = useSlots()
-const activeClass = '!bg-surface-selected shadow-sm'
+const activeClass = '!bg-surface-elevation-3 shadow-sm'
 
 const classes = computed(() => [
-  'flex h-7.5 w-full items-center gap-2 rounded px-2 text-left text-sm text-ink-gray-8 transition-colors hover:bg-surface-gray-2',
+  'flex h-7.5 w-full items-center gap-2 rounded-4 px-2 text-left text-sm text-ink-gray-8 transition-colors hover:bg-surface-gray-2',
   props.collapsed && 'justify-center',
   props.active && activeClass,
 ])

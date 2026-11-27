@@ -1,6 +1,6 @@
 <template>
-  <Dialog v-model="show" :options="{ title: 'New project', size: 'lg' }">
-    <template #body-content>
+  <Dialog v-model="show" title="New project" size="lg">
+    <template #default>
       <div class="flex flex-col gap-3">
         <FormControl
           v-model="form.project_name"
@@ -17,7 +17,7 @@
             <button
               v-for="template in templateChoices"
               :key="template.value"
-              class="rounded-lg border p-2.5 text-left transition-colors"
+              class="rounded-6 border p-2.5 text-left transition-colors"
               :class="
                 form.project_template === template.value
                   ? 'border-outline-gray-4 bg-surface-gray-2'
@@ -25,7 +25,7 @@
               "
               @click="form.project_template = template.value"
             >
-              <p class="text-sm font-medium text-ink-gray-8">{{ template.label }}</p>
+              <p class="text-sm-medium text-ink-gray-8">{{ template.label }}</p>
               <p class="mt-0.5 text-xs text-ink-gray-5">{{ template.hint }}</p>
             </button>
           </div>
@@ -55,16 +55,8 @@
             label="% Complete method"
             :options="methodOptions"
           />
-          <FormControl
-            v-model="form.expected_start_date"
-            type="date"
-            label="Expected start"
-          />
-          <FormControl
-            v-model="form.expected_end_date"
-            type="date"
-            label="Expected end"
-          />
+          <DateField v-model="form.expected_start_date" label="Expected start" />
+          <DateField v-model="form.expected_end_date" label="Expected end" />
         </div>
 
         <div>
@@ -92,6 +84,7 @@ import { computed, ref, watch } from 'vue'
 import { Button, Dialog, ErrorMessage, FormControl } from 'frappe-ui'
 import AssigneeSelect from './AssigneeSelect.vue'
 import NullableSelect from './NullableSelect.vue'
+import DateField from './DateField.vue'
 import api from '@/data/api'
 import { options, projectStatuses, projectTypes, user } from '@/data/session'
 

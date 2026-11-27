@@ -1,9 +1,9 @@
 <template>
-  <Dialog v-model="show" :options="{ title: 'Filters', size: 'md' }">
-    <template #body-content>
+  <Dialog v-model="show" title="Filters" size="md">
+    <template #default>
       <div class="flex flex-col gap-4">
         <section>
-          <p class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-gray-5">
+          <p class="mb-2 text-xs-medium uppercase tracking-wide text-ink-gray-5">
             Assignee
           </p>
           <div class="flex flex-wrap gap-2">
@@ -37,7 +37,7 @@
         </section>
 
         <section>
-          <p class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-gray-5">
+          <p class="mb-2 text-xs-medium uppercase tracking-wide text-ink-gray-5">
             Priority
           </p>
           <div class="flex flex-wrap gap-2">
@@ -58,7 +58,7 @@
         </section>
 
         <section v-if="availableTags.length">
-          <p class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-gray-5">
+          <p class="mb-2 text-xs-medium uppercase tracking-wide text-ink-gray-5">
             Labels
           </p>
           <div class="flex flex-wrap gap-2">
@@ -79,14 +79,14 @@
         </section>
 
         <section>
-          <p class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-gray-5">
+          <p class="mb-2 text-xs-medium uppercase tracking-wide text-ink-gray-5">
             Type
           </p>
           <NullableSelect v-model="filters.type" :options="typeOptions" />
         </section>
 
         <section v-if="epics.length">
-          <p class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-gray-5">
+          <p class="mb-2 text-xs-medium uppercase tracking-wide text-ink-gray-5">
             Epic
           </p>
           <div class="flex flex-wrap gap-2">
@@ -111,20 +111,13 @@
         </section>
 
         <section>
-          <p class="mb-2 text-xs font-medium uppercase tracking-wide text-ink-gray-5">
+          <p class="mb-2 text-xs-medium uppercase tracking-wide text-ink-gray-5">
             Swimlanes
           </p>
           <NullableSelect v-model="filters.swimlane" :options="SWIMLANE_OPTIONS" />
         </section>
 
-        <label class="flex items-center gap-2 text-sm text-ink-gray-7">
-          <input
-            v-model="filters.includeCompleted"
-            type="checkbox"
-            class="size-4 rounded border-outline-gray-3 text-ink-gray-9 focus:ring-0"
-          />
-          Show done tasks
-        </label>
+        <Checkbox v-model="filters.includeCompleted" size="md" label="Show done tasks" />
       </div>
     </template>
 
@@ -143,7 +136,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Button, Dialog } from 'frappe-ui'
+import { Button, Checkbox, Dialog } from 'frappe-ui'
 import NullableSelect from './NullableSelect.vue'
 import UserAvatar from './UserAvatar.vue'
 import {

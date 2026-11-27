@@ -1,5 +1,5 @@
 <template>
-  <Tooltip :text="tooltip" :hover-delay="0.3">
+  <Tooltip :text="tooltip" :hover-delay="300">
     <Avatar
       :image="user?.user_image"
       :label="user?.full_name || user?.name || 'Unassigned'"
@@ -23,6 +23,6 @@ const tooltip = computed(
   () => props.user?.full_name || props.user?.name || 'Unassigned',
 )
 const ringClass = computed(() =>
-  props.ring ? 'ring-2 ring-surface-white rounded-full' : '',
+  props.ring ? 'ring-2 ring-surface-base rounded-full' : '',
 )
 </script>
